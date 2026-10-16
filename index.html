@@ -956,6 +956,52 @@ let dialogActive = false;
 let menuOpen = null; // 'shop' | 'inventory' | null
 let isMenuOpen = false;   // Bag/Menu overlay (Tab key) — freezes player movement
 let isPaused = false;     // Pause System: freezes ALL gameplay (Time.timeScale = 0 equiv)
+
+// ===== SFX System: AudioManager (REAL audio files from /assets/) =====
+const SFX_PATHS = {
+  footstep: 'assets/ninja-adventure/Audio/Sounds/Jump & Bounce/Bounce.wav',
+  pickup:   'assets/ninja-adventure/Audio/Sounds/Bonus/Bonus.wav',
+  interact: 'assets/ninja-adventure/Audio/Sounds/Menu/Accept.wav',
+  ui:       'assets/ninja-adventure/Audio/Sounds/Menu/Select.wav',
+  drop:     'assets/ninja-adventure/Audio/Sounds/Hit & Impact/Hit1.wav',
+  zone:     'assets/ninja-adventure/Audio/Jingles/LevelUp1.wav',
+  chest:    'assets/ninja-adventure/Audio/Sounds/Bonus/Bonus2.wav',
+  sign:     'assets/ninja-adventure/Audio/Sounds/Menu/Accept2.wav',
+  bgm:      'assets/ninja-adventure/Audio/Musics/1 - Adventure Begin.ogg',
+};
+const AudioManager = {
+  ctx: null, masterGain: null, lastFootstep: 0, audioCache: {}, bgmAudio: null,
+  init() {
+    if (this.ctx) return;
+    try {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.value = 0.4;
+      this.masterGain.connect(this.ctx.destination);
+    } catch(e) { console.warn('AudioContext not supported', e); }
+  },
+  resume() { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
+  playFile(path, volume = 0.4, pitchVar = 0) {
+    if (!this.ctx) return;
+    this.resume();
+    if (!this.audioCache[path]) { const a = new Audio(path); a.preload = 'auto'; this.audioCache[path] = a; }
+    const clone = this.audioCache[path].cloneNode(true);
+    clone.volume = volume;
+    if (pitchVar > 0) clone.playbackRate = 1 + (Math.random() - 0.5) * 2 * pitchVar;
+    try { const src = this.ctx.createMediaElementSource(clone); src.connect(this.masterGain); } catch(e) {}
+    clone.play().catch(() => {});
+  },
+  playFootstep() { const n = performance.now(); if (n - this.lastFootstep < 250) return; this.lastFootstep = n; this.playFile(SFX_PATHS.footstep, 0.3, 0.1); },
+  playPickup() { this.playFile(SFX_PATHS.pickup, 0.4); },
+  playInteract() { this.playFile(SFX_PATHS.interact, 0.4); },
+  playUI() { this.playFile(SFX_PATHS.ui, 0.3); },
+  playDrop() { this.playFile(SFX_PATHS.drop, 0.35); },
+  playZone() { this.playFile(SFX_PATHS.zone, 0.35); },
+  playChest() { this.playFile(SFX_PATHS.chest, 0.4); },
+  playSign() { this.playFile(SFX_PATHS.sign, 0.35); },
+  playBGM() { if (this.bgmAudio) return; this.init(); this.bgmAudio = new Audio(SFX_PATHS.bgm); this.bgmAudio.loop = true; this.bgmAudio.volume = 0.15; this.bgmAudio.play().catch(() => {}); },
+  stopBGM() { if (this.bgmAudio) { this.bgmAudio.pause(); this.bgmAudio = null; } },
+};
 let activeTab = 'status'; // 'status' | 'bag' | 'map'
 const INV_SLOTS = 12;
 
@@ -1272,10 +1318,13 @@ function rebuildDecorFromMap() {
 
 // ---------- Input ----------
 window.addEventListener('keydown', (e) => {
+  // Initialize AudioContext on first user gesture
+  AudioManager.init(); AudioManager.resume();
   // ===== Tab key — toggle UI menu (prevent browser tab focus) =====
   if (e.key === 'Tab') {
     e.preventDefault();
     isMenuOpen = !isMenuOpen;
+    AudioManager.playUI();
     document.getElementById('ui-menu').classList.toggle('open', isMenuOpen);
     if (isMenuOpen) {
       // Sync quantities from player state (preserve swap positions, update counts only)
@@ -1301,6 +1350,7 @@ window.addEventListener('keydown', (e) => {
     if (dialogActive) { closeDialog(); return; }
     // Toggle pause
     isPaused = !isPaused;
+    AudioManager.playUI();
     document.getElementById('pause-menu').classList.toggle('open', isPaused);
     toast(isPaused ? '⏸ Game dijeda' : '▶ Game dilanjutkan', 'info');
     return;
@@ -1659,6 +1709,7 @@ function dropItem(slotIndex) {
     bobOffset: Math.random() * 6.28,
   };
   itemsInWorld.push(droppedItem);
+  AudioManager.playDrop();
 
   // Array Nullification
   // Sync player.inventory/player.seeds dengan drop (single source of truth)
@@ -1822,6 +1873,7 @@ for (const def of chestDefs) {
     interact() {
       if (this.isOpened) { toast('Peti sudah dibuka', 'warn'); return; }
       this.isOpened = true;
+      AudioManager.playChest();
       const db = CROPS[this.rewardId];
       const name = db ? db.name : this.rewardId;
       for (let i = 0; i < this.rewardQty; i++) {
@@ -1847,6 +1899,7 @@ for (const def of chestDefs) {
       syncInvQuantities(); renderToolbar();
       if (isMenuOpen && activeTab === 'bag') renderInventory();
       showPopup(this.rewardId, name, 'pickup', `+${this.rewardQty}`);
+      AudioManager.playPickup();
       toast(`📦 Peti dibuka! Dapat: ${name} ×${this.rewardQty}`, 'info');
     },
   };
@@ -1863,6 +1916,7 @@ for (const def of signboardDefs) {
     text: def.text,
     interact() {
       toast(`📜 ${this.text}`, 'info');
+      AudioManager.playSign();
     },
   };
   interactableObjects.push(obj);
@@ -1957,7 +2011,7 @@ function tryInteract() {
       closest = obj; closestDist = dist;
     }
   }
-  if (closest) { closest.interact(); return true; }
+  if (closest) { closest.interact(); AudioManager.playInteract(); return true; }
   return false;
 }
 // ---------- Toasts ----------
@@ -2258,6 +2312,7 @@ function useToolOrInteract() {
       syncInvItem(crop.type, player.inventory[crop.type]);   // sync hotbar/bag count
       toast(`Dipanen: ${CROPS[crop.type].name} (+1)`, 'gold');
       showPopup(crop.type, CROPS[crop.type].name, 'harvest', '+1');  // popup notification
+      AudioManager.playPickup();
       cropMap[fy][fx] = null;
       map[fy][fx] = T.TILLED;
       spawnParticles(fx*TILE+TILE/2, fy*TILE+TILE/2, CROPS[crop.type].color, 8);
@@ -2484,6 +2539,7 @@ function updatePlayer(dt) {
     player.moving = true;
     player.walkTime += dt;
     player.walkFrame = Math.floor(player.walkTime * 8) % 4;
+    AudioManager.playFootstep();
   } else {
     player.moving = false;
     player.walkFrame = 0;
@@ -3346,6 +3402,7 @@ document.getElementById('ui-close').addEventListener('click', () => {
 
 // ===== Pause Menu Button Handlers =====
 document.getElementById('pause-resume').addEventListener('click', () => {
+  AudioManager.init(); AudioManager.playUI();
   isPaused = false;
   document.getElementById('pause-menu').classList.remove('open');
   toast('▶ Game dilanjutkan', 'info');
@@ -3432,6 +3489,7 @@ function updateCurrentZone() {
     currentZoneId = newZoneId;
     if (zone) {
       toast(`📍 Memasuki: ${zone.name}`, 'info');
+      AudioManager.playZone();
       showPopup(zone.id === 'town' ? 'parsnip' : 'pumpkin', zone.name, 'pickup', zone.icon);
     }
     updateZoneHighlight();
@@ -3651,6 +3709,9 @@ function init() {
     document.getElementById('loading').style.display = 'none';
   }, 400);
   lastFrame = performance.now();
+  AudioManager.playBGM();   // Start background music (real .ogg file)
+  // Init AudioContext on first click too (browser gesture policy)
+  document.addEventListener('click', () => { AudioManager.init(); AudioManager.resume(); }, { once: true });
   requestAnimationFrame(loop);
 }
 
