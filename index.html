@@ -503,6 +503,30 @@
   .ui-map-info li { margin: 3px 0; }
   .ui-val { color: #ffe04a; font-weight: 700; }
 
+  /* ===== Dynamic Map Zone Display ===== */
+  .zone-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .zone-card {
+    padding: 14px;
+    background: rgba(255,255,255,0.04);
+    border: 2px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    transition: border-color 0.3s, background 0.3s, box-shadow 0.3s, transform 0.2s;
+    cursor: pointer;
+  }
+  .zone-card .zone-icon { font-size: 28px; margin-bottom: 6px; }
+  .zone-card .zone-name { font-size: 15px; font-weight: 800; color: #c8d8b0; }
+  .zone-card .zone-desc { font-size: 11px; color: #88a06a; margin-top: 4px; line-height: 1.4; }
+  .zone-card .zone-coords { font-size: 10px; color: #666; margin-top: 6px; font-family: monospace; }
+  .zone-card.highlighted {
+    border-color: #88e06a;
+    background: rgba(136, 224, 106, 0.15);
+    box-shadow: 0 0 20px rgba(136, 224, 106, 0.35);
+    transform: scale(1.03);
+  }
+  .zone-card.highlighted .zone-name { color: #88e06a; }
+  .zone-card.highlighted .zone-icon { filter: drop-shadow(0 0 6px rgba(136, 224, 106, 0.6)); }
+  .zone-card:not(.highlighted) { opacity: 0.5; }
+
   /* ===== Popup Notification Queue (top-right corner) ===== */
   #popup-container {
     position: absolute;
@@ -578,6 +602,7 @@
     </div>
     <div class="hud-group">
       <div class="hud-pill time"><span class="icon" id="hud-time-icon">☀️</span><span id="hud-time">06:00</span></div>
+      <div class="hud-pill season"><span class="icon">📍</span><span id="hud-zone">—</span></div>
     </div>
   </div>
 
@@ -624,30 +649,26 @@
           </div>
           <div class="ui-inventory-grid" id="inventoryGrid"></div>
         </div>
-        <!-- Tab 3: Map Info -->
+        <!-- Tab 3: Map — Dynamic Zone Display -->
         <div class="ui-tab-page" data-tab="map">
           <div class="ui-map-info">
-            <h3>🌍 Harvest Vale</h3>
-            <p>Lembah subur di pinggir dunia, rumah petani muda &amp; tetua desa.</p>
+            <h3>🗺️ Dynamic Map — Zone Detection</h3>
+            <p>Player berada di: <span class="ui-val" id="ui-current-zone">—</span></p>
+            <div class="zone-grid" id="zoneGrid"></div>
             <h3>📍 Lokasi Penting</h3>
             <ul>
               <li><strong>Pondok Pemain</strong> — bottom-left, tidur &amp; istirahat</li>
               <li><strong>Toko Benih</strong> — top-right, beli/jual</li>
               <li><strong>Kolam</strong> — top-left, isi ulang air</li>
               <li><strong>Area Bertani</strong> — tengah, dikelilingi pagar</li>
-            </ul>
-            <h3>🎯 Tips</h3>
-            <ul>
-              <li>Siram tanaman tiap hari supaya tumbuh</li>
-              <li>Tidur di rumah untuk ganti hari &amp; pulih energi</li>
-              <li>Isi penyiram di kolam (tile biru)</li>
-              <li>Panen tanaman matang (✨) lalu jual di toko</li>
+              <li><strong>Peti Harta</strong> — 3 peti tersebar di map</li>
             </ul>
             <h3>🗺️ Koordinat</h3>
             <ul>
               <li>Tile: <span class="ui-val" id="ui-map-tile">—</span></li>
               <li>Pixel: <span class="ui-val" id="ui-map-px">—</span></li>
               <li>Kamera: <span class="ui-val" id="ui-map-cam">—</span></li>
+              <li>Zona: <span class="ui-val" id="ui-map-zone">—</span></li>
             </ul>
           </div>
         </div>
@@ -3119,6 +3140,12 @@ function updateHUD() {
   const timeStr = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
   document.getElementById('hud-time').textContent = timeStr;
   document.getElementById('hud-time-icon').textContent = (h >= 6 && h < 19) ? '☀️' : '🌙';
+  // Update zone label in HUD
+  const hudZoneEl = document.getElementById('hud-zone');
+  if (hudZoneEl) {
+    const z = zoneRegistry.find(zn => zn.id === currentZoneId);
+    hudZoneEl.textContent = z ? z.name : '—';
+  }
 }
 
 // ---------- Main loop ----------
@@ -3133,6 +3160,7 @@ function loop(now) {
     spawnNightFireflies();
     updateFireflies(dt);
     checkWorldPickups();   // Check dropped items pickup (Euclidean distance)
+    updateCurrentZone();   // Runtime Find: detect zone via Array.find()
     updateCamera();   // Smooth lerp + confiner clamp (BEFORE render)
     render();
     updateHUD();
@@ -3165,9 +3193,7 @@ function switchTab(tabName) {
   } else if (tabName === 'status') {
     renderStatusTab();
     drawPortrait();
-  } else if (tabName === 'map') {
-    updateMapTab();
-  }
+  } else if (tabName === 'map') { renderZoneCards(); updateMapTab(); }
 }
 // Tab button click handlers
 document.querySelectorAll('.ui-tab-btn').forEach((btn) => {
@@ -3221,6 +3247,81 @@ function drawPortrait() {
 }
 
 // ===== Map Tab Live Update =====
+// ===== Dynamic Zone Registry & Find Method =====
+// Zone database with boundary boxes. Runtime: Array.find() detects zone.
+// Harvest Vale map (40×30 tiles, TILE=32): Town (left half) + Forest (right half)
+const zoneRegistry = [
+  {
+    id: 'town',
+    name: 'Town',
+    icon: '🏠',
+    desc: 'Area desa dengan pondok, toko, kolam & area bertani.',
+    minX: 0, maxX: 20 * TILE - 1,   // cols 0-19 (left half)
+    minY: 0, maxY: MAP_H * TILE - 1,
+  },
+  {
+    id: 'forest',
+    name: 'Forest',
+    icon: '🌲',
+    desc: 'Hutan dengan pohon tinggi & peti harta tersembunyi.',
+    minX: 20 * TILE, maxX: MAP_W * TILE - 1,   // cols 20-39 (right half)
+    minY: 0, maxY: MAP_H * TILE - 1,
+  },
+];
+let currentZoneId = null;
+
+// Runtime Find: detect zone via Array.prototype.find()
+function updateCurrentZone() {
+  const zone = zoneRegistry.find(z =>
+    player.x >= z.minX && player.x <= z.maxX &&
+    player.y >= z.minY && player.y <= z.maxY
+  );
+  const newZoneId = zone ? zone.id : null;
+  if (newZoneId !== currentZoneId) {
+    currentZoneId = newZoneId;
+    if (zone) {
+      toast(`📍 Memasuki: ${zone.name}`, 'info');
+      showPopup(zone.id === 'town' ? 'parsnip' : 'pumpkin', zone.name, 'pickup', zone.icon);
+    }
+    updateZoneHighlight();
+    const label = zone ? zone.name : 'Unknown';
+    const el1 = document.getElementById('ui-current-zone');
+    if (el1) el1.textContent = label;
+    const el2 = document.getElementById('ui-map-zone');
+    if (el2) el2.textContent = label;
+  }
+}
+
+function renderZoneCards() {
+  const grid = document.getElementById('zoneGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (const zone of zoneRegistry) {
+    const card = document.createElement('div');
+    card.className = 'zone-card' + (zone.id === currentZoneId ? ' highlighted' : '');
+    card.dataset.zoneId = zone.id;
+    card.innerHTML = `
+      <div class="zone-icon">${zone.icon}</div>
+      <div class="zone-name">${zone.name}</div>
+      <div class="zone-desc">${zone.desc}</div>
+      <div class="zone-coords">x: ${zone.minX}-${zone.maxX} | y: ${zone.minY}-${zone.maxY}</div>
+    `;
+    grid.appendChild(card);
+  }
+}
+
+function updateZoneHighlight() {
+  document.querySelectorAll('.zone-card').forEach(card => {
+    card.classList.toggle('highlighted', card.dataset.zoneId === currentZoneId);
+  });
+  const zone = zoneRegistry.find(z => z.id === currentZoneId);
+  const label = zone ? zone.name : 'Unknown';
+  const el1 = document.getElementById('ui-current-zone');
+  if (el1) el1.textContent = label;
+  const el2 = document.getElementById('ui-map-zone');
+  if (el2) el2.textContent = label;
+}
+
 function updateMapTab() {
   const tile = document.getElementById('ui-map-tile');
   const px = document.getElementById('ui-map-px');
@@ -3388,6 +3489,9 @@ function init() {
     if (isMenuOpen && activeTab === 'bag') renderInventory();
     if (isMenuOpen && activeTab === 'status') drawPortrait();
   });
+  // Initialize zone detection + Map tab zone cards
+  renderZoneCards();
+  updateCurrentZone();
   // Auto-save every 5 sec
   setInterval(save, 5000);
   gameStarted = true;
