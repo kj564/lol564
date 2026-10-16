@@ -627,12 +627,14 @@ function generateMap() {
   // NPCs
   npcs = [
     { id: 'maya', name: 'Maya', x: 18 * TILE, y: 6 * TILE, color: '#e36a8a', hair: '#3a2030', dir: 'down',
+      sprite: 'curlyhair',  // uses Characters/Human/WALKING/curlyhair_walk_strip8.png
       dialog: [
         'Halo petani baru! Selamat datang di Harvest Vale.',
         'Aku Maya. Kalau butuh benih, datangi toko di utara.',
         'Tanaman butuh air setiap hari supaya tumbuh. Jangan lupa siram ya!'
       ]},
     { id: 'tom', name: 'Pak Tom', x: 28 * TILE, y: 18 * TILE, color: '#5a8a4a', hair: '#888070', dir: 'down',
+      sprite: 'bowlhair',  // uses Characters/Human/WALKING/bowlhair_walk_strip8.png
       dialog: [
         'Hmm... musim ini tanahnya cukup subur.',
         'Jangan lupa istirahat. Tidur di rumah biar energi pulih.'
@@ -1243,36 +1245,43 @@ function drawTile(tile, x, y) {
       ctx.fillStyle = '#ffe04a';
       ctx.fillRect(px + 14, py + 14, 4, 4);
       break;
-    case T.TILLED:
-      ctx.fillStyle = '#6a4a2a';
+    case T.TILLED: {
+      // Grass backdrop (soil sprite is 16x12, sits on top of grass)
+      ctx.fillStyle = '#3a6a2a';
       ctx.fillRect(px, py, TILE, TILE);
-      ctx.fillStyle = '#5a3a1a';
-      ctx.fillRect(px, py, TILE, 3);
-      ctx.fillRect(px, py + 15, TILE, 3);
-      ctx.fillRect(px, py + 27, TILE, 3);
-      ctx.fillStyle = '#7a5a3a';
-      for (let i = 0; i < 4; i++) {
-        ctx.fillRect(px + i*8 + 1, py + 4, 4, 8);
-        ctx.fillRect(px + i*8 + 1, py + 18, 4, 8);
+      const soilDry = getAsset('Elements/Crops/soil_00.png');
+      if (soilDry && soilDry.complete && soilDry.naturalWidth) {
+        // Soil sprite is 16x12 — anchor to bottom of tile, leaving grass strip on top
+        ctx.drawImage(soilDry, 0, 0, 16, 12, px, py + 4, TILE, TILE - 4);
+      } else {
+        // Fallback procedural
+        ctx.fillStyle = '#6a4a2a';
+        ctx.fillRect(px, py + 4, TILE, TILE - 4);
+        ctx.fillStyle = '#5a3a1a';
+        ctx.fillRect(px, py + 4, TILE, 2);
+        ctx.fillRect(px, py + 15, TILE, 2);
+        ctx.fillRect(px, py + 27, TILE, 2);
       }
       break;
-    case T.WATERED:
-      ctx.fillStyle = '#3a2a14';
+    }
+    case T.WATERED: {
+      // Grass backdrop
+      ctx.fillStyle = '#3a6a2a';
       ctx.fillRect(px, py, TILE, TILE);
-      ctx.fillStyle = '#4a3a20';
-      ctx.fillRect(px, py, TILE, 3);
-      ctx.fillRect(px, py + 15, TILE, 3);
-      ctx.fillRect(px, py + 27, TILE, 3);
-      ctx.fillStyle = '#5a4530';
-      for (let i = 0; i < 4; i++) {
-        ctx.fillRect(px + i*8 + 1, py + 4, 4, 8);
-        ctx.fillRect(px + i*8 + 1, py + 18, 4, 8);
+      // Wet soil sprite (soil_04 is the wet variant)
+      const soilWet = getAsset('Elements/Crops/soil_04.png');
+      if (soilWet && soilWet.complete && soilWet.naturalWidth) {
+        ctx.drawImage(soilWet, 0, 0, 16, 12, px, py + 4, TILE, TILE - 4);
+      } else {
+        ctx.fillStyle = '#3a2a14';
+        ctx.fillRect(px, py + 4, TILE, TILE - 4);
       }
-      // wet shine
-      ctx.fillStyle = 'rgba(80, 140, 220, 0.25)';
+      // Wet shine (extra water sparkle on top of sprite)
+      ctx.fillStyle = 'rgba(120, 180, 255, 0.35)';
       ctx.fillRect(px + 4, py + 8, 6, 2);
       ctx.fillRect(px + 18, py + 22, 6, 2);
       break;
+    }
     case T.WATER:
       ctx.fillStyle = '#2a5a9a';
       ctx.fillRect(px, py, TILE, TILE);
@@ -1449,7 +1458,8 @@ function drawCrop(crop, x, y) {
 function drawNPC(n) {
   const px = n.x - camera.x;
   const py = n.y - camera.y;
-  drawCharacter(px, py, n.dir, n.color, n.hair, 0, n.name);
+  // Pass sprite hairstyle name via the 'hair' param (prefixed with 'sprite:')
+  drawCharacter(px, py, n.dir, n.color, 'sprite:' + (n.sprite || 'base'), 0, n.name);
 }
 
 function drawPlayer() {
@@ -1457,14 +1467,20 @@ function drawPlayer() {
   const py = player.y - camera.y - TILE/2 + 4; // slight offset
   // Pass movement state separately from the walk-cycle index: walkFrame can be 0
   // during movement, which previously switched the sprite back to idle for one frame.
-  drawCharacter(px, py, player.dir, '#4a8aff', '#5a3a1a', player.moving ? 1 : 0);
+  drawCharacter(px, py, player.dir, '#4a8aff', 'sprite:base', player.moving ? 1 : 0);
 }
 
 function drawCharacter(px, py, dir, shirt, hair, frame, name) {
   const walking = frame !== 0;
+  // Resolve sprite hairstyle: hair param can be 'sprite:<name>' to use that hairstyle
+  // e.g. 'sprite:curlyhair' -> Characters/Human/WALKING/curlyhair_walk_strip8.png
+  let spriteName = 'base';
+  if (typeof hair === 'string' && hair.startsWith('sprite:')) {
+    spriteName = hair.slice(7);
+  }
   const sprite = getAsset(walking
-    ? 'Characters/Human/WALKING/base_walk_strip8.png'
-    : 'Characters/Human/IDLE/base_idle_strip9.png');
+    ? 'Characters/Human/WALKING/' + spriteName + '_walk_strip8.png'
+    : 'Characters/Human/IDLE/' + spriteName + '_idle_strip9.png');
   if (sprite) {
     const count = walking ? 8 : 9;
     const fw = sprite.naturalWidth / count;
