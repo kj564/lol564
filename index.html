@@ -843,6 +843,7 @@ let player = {
 };
 let selectedTool = 'hoe';
 let selectedSeed = 'parsnip';
+let activeHotbarIndex = 0;   // active hotbar slot (0-4), updated by keys 1-5
 let day = 1;
 let season = 'spring'; // spring/summer/fall/winter
 let seasonDay = 1;
@@ -1225,7 +1226,7 @@ window.addEventListener('keydown', (e) => {
   else if (k === '3') selectFromHotbar(2);
   else if (k === '4') selectFromHotbar(3);
   else if (k === '5') selectFromHotbar(4);
-  else if (k === ' ' || k === 'e') useToolOrInteract();
+  else if (k === ' ' || k === 'e') useHotbarItem();   // Use item from active hotbar slot
   else if (k === 'b') tryOpenShop();
   else if (k === 't') trySleep();
   else if (k === 'h' || k === '?') toggleHelp(true);
@@ -1290,7 +1291,10 @@ function renderToolbar() {
     const item = inventoryData[i];
     const toolId = item ? item.id : null;
     const slot = document.createElement('div');
-    slot.className = 'tool-slot' + (selectedTool === toolId && toolId ? ' active' : '');
+    // Highlight active hotbar slot (selected via keys 1-5) OR matching selectedTool
+    const isActiveSlot = i === activeHotbarIndex;
+    const isSelectedTool = selectedTool === toolId && toolId;
+    slot.className = 'tool-slot' + ((isActiveSlot || isSelectedTool) ? ' active' : '');
     slot.dataset.tool = toolId || ('empty' + i);
     slot.dataset.slotIndex = i;
     // Empty slot visual
@@ -1375,13 +1379,17 @@ function selectTool(id) {
 // Reads inventoryData[slotIndex] — if item is a usable tool, select it.
 function selectFromHotbar(slotIndex) {
   const item = inventoryData[slotIndex];
+  // Always update active slot (visual highlight) even if item is non-tool
+  activeHotbarIndex = slotIndex;
+  renderToolbar();
   if (!item) {
     toast('Slot hotbar kosong', 'warn');
     return;
   }
   const usableTools = ['hoe', 'seeds', 'water', 'sickle', 'axe'];
   if (!usableTools.includes(item.id)) {
-    toast(`${item.name} bukan alat`, 'warn');
+    // Non-tool item selected (crop/food) — can be used via Spasi to consume
+    toast(`Selected: ${item.name} (tekan Spasi untuk pakai)`);
     return;
   }
   selectTool(item.id);
@@ -1399,6 +1407,55 @@ function selectFromHotbar(slotIndex) {
     };
     renderToolbar();
   }
+}
+
+// ===== Use Item dari Hotbar (Spasi/E) =====
+// Baca item di slot aktif (inventoryData[activeHotbarIndex]).
+// - Tools (hoe/seeds/water/sickle/axe) → useToolOrInteract() (farming action)
+// - Crops (parsnip/potato/tomato/corn) → eat (restore energy + decrement)
+// - Null → toast "slot kosong"
+function useHotbarItem() {
+  const item = inventoryData[activeHotbarIndex];
+  if (!item) {
+    toast('Slot hotbar kosong — tidak ada item untuk dipakai', 'warn');
+    return;
+  }
+  const usableTools = ['hoe', 'seeds', 'water', 'sickle', 'axe'];
+  if (usableTools.includes(item.id)) {
+    // Tool → trigger farming action (existing logic)
+    useToolOrInteract();
+    return;
+  }
+  // Crop/food → consume (eat)
+  const cropId = item.id;
+  const cropDef = CROPS[cropId];
+  if (cropDef) {
+    // Restore energy (crop sell value / 2 as energy)
+    const energyGain = Math.max(5, Math.floor(cropDef.sell / 4));
+    const oldEnergy = player.energy;
+    player.energy = Math.min(100, player.energy + energyGain);
+    const actualGain = player.energy - oldEnergy;
+    // Decrement inventory
+    player.inventory[cropId] = Math.max(0, (player.inventory[cropId] || 0) - 1);
+    syncInvItem(cropId, player.inventory[cropId]);
+    // Popup notification
+    showPopup(cropId, cropDef.name, 'pickup', `+${actualGain}⚡`);
+    toast(`Dipakai: ${cropDef.name} (+${actualGain} energy)`, 'info');
+    // If slot now empty, keep selection but show empty
+    if (player.inventory[cropId] === 0 && inventoryData[activeHotbarIndex] && inventoryData[activeHotbarIndex].id === cropId) {
+      // Check if this was the only stack — remove from inventoryData if quantity hits 0
+      const slot = inventoryData[activeHotbarIndex];
+      if (slot && slot.quantity !== undefined) {
+        slot.quantity = 0;
+        // Find all slots with this crop id; if all 0, clear them
+      }
+    }
+    updateHUD();
+    save();
+    return;
+  }
+  // Unknown item type
+  toast(`${item.name} tidak bisa dipakai`, 'warn');
 }
 
 // Sync inventory item quantity after farming action.
