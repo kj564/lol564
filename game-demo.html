@@ -510,39 +510,149 @@ const ASSET_PATHS = {
 };
 const assets = {};  // populated by loadAssets()
 
-// ===== 5 Modular Layer Arrays (20×20) =====
-const Layer_Ground = Array.from({length: ROWS}, () => Array(COLS).fill(1));
-const Layer_WalkInFront = Array.from({length: ROWS}, () => Array(COLS).fill(0));
-for (let i = 0; i < COLS; i++) Layer_WalkInFront[10][i] = 2;
-for (let i = 0; i < ROWS; i++) Layer_WalkInFront[i][10] = 2;
-const flowerSpots = [[3,3],[5,3],[6,8],[14,4],[15,7],[4,14],[6,15],[14,14],[15,16]];
-flowerSpots.forEach(([y,x]) => { if (Layer_WalkInFront[y][x] === 0) Layer_WalkInFront[y][x] = 5; });
+// ===== HAND-CRAFTED TILEMAP MATRIX (20×20) =====
+// Each layer is a manually-designed 20×20 array — NO procedural generation.
+// Design: cross paths, fortress walls with gates, tree clusters, flowers.
 
-const Layer_Collision = Array.from({length: ROWS}, () => Array(COLS).fill(0));
-// Stone fortress ring (center, rows 7-12 cols 7-12) with wide gaps
-for (let y = 7; y <= 12; y++) {
-  for (let x = 7; x <= 12; x++) {
-    if (y === 7 || y === 12 || x === 7 || x === 12) {
-      if ((y === 7 || y === 12) && (x === 9 || x === 10)) continue;
-      if ((x === 7 || x === 12) && (y === 9 || y === 10)) continue;
-      Layer_Collision[y][x] = 3;
-    }
-  }
-}
+// Layer 1: Ground — grass everywhere (1=grass)
+const Layer_Ground = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+];
 
-const Layer_WalkBehind = Array.from({length: ROWS}, () => Array(COLS).fill(0));
-const treePositions = [[2,2],[17,2],[2,17],[17,17],[5,14],[14,5],[6,6],[13,13]];
-treePositions.forEach(([y,x]) => {
-  if (Layer_Collision[y][x] === 0) Layer_Collision[y][x] = 6;  // tree trunk
-  if (y - 1 >= 0) Layer_WalkBehind[y-1][x] = 4;  // canopy above
+// Layer 2: WalkInFront — paths (2) + flowers (5)
+// Cross paths at row 10 (horizontal) and col 10 (vertical)
+// Flower clusters scattered
+const Layer_WalkInFront = [
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,5,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0],
+  [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+  [0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0],
+  [0,0,0,5,0,0,0,0,0,0,2,0,0,0,0,0,5,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+];
+
+// Layer 3: Collision — fortress walls (3) + tree trunks (6)
+// Fortress ring at rows 6-13, cols 6-13 with 2-tile gates
+const Layer_Collision = [
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,6,0,0,0,0,0,0,0,0,0,0,6,0,0,0,0],
+  [0,0,0,0,0,3,3,3,3,0,0,3,3,3,3,0,0,0,0,0],
+  [0,0,0,0,0,3,0,0,0,0,0,0,0,0,3,0,0,0,0,0],
+  [0,0,0,0,0,3,0,0,0,0,0,0,0,0,3,0,0,0,0,0],
+  [0,0,0,0,0,3,0,0,0,0,0,0,0,0,3,0,0,0,0,0],
+  [0,0,0,0,0,3,0,0,0,0,0,0,0,0,3,0,0,0,0,0],
+  [0,0,0,0,0,3,0,0,0,0,0,0,0,0,3,0,0,0,0,0],
+  [0,0,0,0,0,3,0,0,0,0,0,0,0,0,3,0,0,0,0,0],
+  [0,0,0,0,0,3,3,3,3,0,0,3,3,3,3,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,6,0,0,0,0,0,0,0,0,0,0,6,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+];
+
+// Layer 4: WalkBehind — tree canopies (4) above tree trunks
+const Layer_WalkBehind = [
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,4,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+];
+
+// Layer 5: Decor — sparkles (7) on flower tiles
+const Layer_Decor = [
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+];
+
+// ===== Modular Prefab Object Array: Chests =====
+// Each chest: {gridCol, gridRow, rewardId, rewardQty, isOpened, x, y}
+// x/y are pre-computed via Grid Snapping: X = gridCol * TILE, Y = gridRow * TILE
+// This guarantees zero visual gaps — chest always aligned to tile grid.
+const chests = [
+  { gridCol: 8,  gridRow: 8,  rewardId: 'potion',  rewardQty: 2, isOpened: false },
+  { gridCol: 11, gridRow: 8,  rewardId: 'carrot',   rewardQty: 5, isOpened: false },
+  { gridCol: 8,  gridRow: 11, rewardId: 'sword',    rewardQty: 1, isOpened: false },
+  { gridCol: 11, gridRow: 11, rewardId: 'pickaxe',  rewardQty: 1, isOpened: false },
+];
+// Pre-compute pixel positions via Grid Snapping formula
+chests.forEach(c => {
+  c.x = c.gridCol * TILE;   // X = gridCol * TILE_SIZE (grid snapping)
+  c.y = c.gridRow * TILE;   // Y = gridRow * TILE_SIZE
+  c.interactionRadius = 48; // pickup distance for opening
 });
-
-const Layer_Decor = Array.from({length: ROWS}, () => Array(COLS).fill(0));
-for (let y = 0; y < ROWS; y++) {
-  for (let x = 0; x < COLS; x++) {
-    if (Layer_WalkInFront[y][x] === 5 && Math.random() < 0.5) Layer_Decor[y][x] = 7;
-  }
-}
 
 // ===== Inventory Data State (Drag-Drop source of truth) =====
 let inventoryData = [
@@ -645,15 +755,29 @@ window.addEventListener('keydown', (e) => {
     }
     return;
   }
+  // Spasi/E → interact (chest open or use item)
+  if (e.key === ' ' || e.key.toLowerCase() === 'e') {
+    e.preventDefault();
+    if (!checkChestInteraction()) {
+      // No chest nearby → try use hotbar item (if active slot has item)
+      const item = inventoryData[activeHotbarIndex];
+      if (item) {
+        toast(`🔧 Used: ${ItemDatabase[item.id].name}`, 'info');
+      }
+    }
+    return;
+  }
   // Respawn items
   if (e.key.toLowerCase() === 'r') {
     spawnWorldItems();
-    toast('🔄 Items respawned!');
+    // Also reset chests
+    chests.forEach(c => { c.isOpened = false; });
+    toast('🔄 Items & chests respawned!');
     return;
   }
   // Movement keys
   keys[e.key.toLowerCase()] = true;
-  if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase())) e.preventDefault();
+  if (['arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase())) e.preventDefault();
 });
 window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
@@ -1296,10 +1420,105 @@ function render() {
   drawLayer(Layer_Ground);        // Layer 1
   drawLayer(Layer_WalkInFront);   // Layer 2
   drawWorldItems();                // World items (above paths, below player)
+  drawChests();                    // Chest prefabs (grid-snapped, above world items)
   drawLayer(Layer_Collision);     // Layer 3
   drawPlayer();                    // Layer 3.5
   drawLayer(Layer_WalkBehind);    // Layer 4 (canopy covers player)
   drawLayer(Layer_Decor);          // Layer 5
+}
+
+// ===== Chest Prefab Renderer (Grid-Snapped) =====
+// Render chests at their grid-snapped pixel positions with camera offset.
+// Uses real asset sprite (carrot_05 as chest placeholder since no chest asset).
+// Visual changes based on isOpened state: closed = full sprite, open = faded.
+function drawChests() {
+  for (const chest of chests) {
+    const sx = chest.x - camera.x;
+    const sy = chest.y - camera.y;
+    if (sx < -TILE || sy < -TILE || sx > canvas.clientWidth + TILE || sy > canvas.clientHeight + TILE) continue;
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(sx + TILE/2, sy + TILE - 4, 16, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Chest body (procedural since no chest sprite in assets)
+    // Closed: brown box with gold lock
+    // Open: faded box with dark interior
+    if (!chest.isOpened) {
+      // Closed chest — wooden brown with gold trim
+      ctx.fillStyle = '#8a5a2a';
+      ctx.fillRect(sx + 6, sy + 10, TILE - 12, TILE - 14);
+      ctx.fillStyle = '#6a3a1a';
+      ctx.fillRect(sx + 6, sy + 10, TILE - 12, 4);
+      ctx.fillStyle = '#a06a3a';
+      ctx.fillRect(sx + 8, sy + 14, TILE - 16, 6);
+      // Gold lock
+      ctx.fillStyle = '#ffd54a';
+      ctx.fillRect(sx + TILE/2 - 3, sy + 20, 6, 6);
+      ctx.fillStyle = '#b88a00';
+      ctx.fillRect(sx + TILE/2 - 2, sy + 22, 4, 2);
+      // Highlight when player near
+      const dist = Math.hypot(PLAYER.x - (chest.x + TILE/2), PLAYER.y - (chest.y + TILE/2));
+      if (dist < chest.interactionRadius + 20) {
+        const intensity = 1 - (dist / (chest.interactionRadius + 20));
+        ctx.strokeStyle = `rgba(255, 213, 74, ${intensity})`;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(sx + 4, sy + 8, TILE - 8, TILE - 12);
+      }
+    } else {
+      // Open chest — faded, dark interior
+      ctx.fillStyle = 'rgba(80, 50, 20, 0.6)';
+      ctx.fillRect(sx + 6, sy + 10, TILE - 12, TILE - 14);
+      ctx.fillStyle = 'rgba(40, 20, 10, 0.8)';
+      ctx.fillRect(sx + 8, sy + 16, TILE - 16, TILE - 22);
+      // Lid open (angled)
+      ctx.fillStyle = 'rgba(100, 60, 30, 0.5)';
+      ctx.fillRect(sx + 4, sy + 6, TILE - 8, 6);
+    }
+  }
+}
+
+// ===== Chest Interaction Check =====
+// Called from useHotbarItem() when Spasi/E pressed. If player near a closed
+// chest, open it and add reward to inventory.
+function checkChestInteraction() {
+  for (const chest of chests) {
+    if (chest.isOpened) continue;
+    const dist = Math.hypot(PLAYER.x - (chest.x + TILE/2), PLAYER.y - (chest.y + TILE/2));
+    if (dist < chest.interactionRadius) {
+      // Open chest
+      chest.isOpened = true;
+      const db = ItemDatabase[chest.rewardId];
+      // Add reward to inventory (stacking or first empty)
+      for (let i = 0; i < chest.rewardQty; i++) {
+        // Try stack
+        let stacked = false;
+        for (let j = 0; j < INV_SLOTS; j++) {
+          if (inventoryData[j] && inventoryData[j].id === chest.rewardId && inventoryData[j].quantity < db.maxStack) {
+            inventoryData[j].quantity++;
+            stacked = true;
+            break;
+          }
+        }
+        if (!stacked) {
+          for (let j = 0; j < INV_SLOTS; j++) {
+            if (!inventoryData[j]) {
+              inventoryData[j] = { id: chest.rewardId, quantity: 1 };
+              break;
+            }
+          }
+        }
+      }
+      // Popup + toast
+      showPopup(chest.rewardId, db.name, 'pickup', `+${chest.rewardQty}`);
+      toast(`📦 Chest dibuka! Dapat: ${db.name} ×${chest.rewardQty}`, 'info');
+      renderInventory();
+      return true;  // chest opened
+    }
+  }
+  return false;  // no chest nearby
 }
 
 // ===== Game Loop =====
