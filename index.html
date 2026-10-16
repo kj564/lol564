@@ -1547,12 +1547,14 @@ function dropItem(slotIndex) {
   if (db) { name = db.name; assetKey = db.assetKey; }
 
   // Realtime Object Instantiation
+  // Find safe drop position (avoid walls/trees/water via spiral search)
+  const dropPos = findDropPosition(player.x, player.y, 0, 55);
   const droppedItem = {
     id: item.id,
     name: name,
     assetKey: assetKey,
-    x: player.x,
-    y: player.y + 55,    // +55px offset (beyond 38px pickup threshold)
+    x: dropPos.x,
+    y: dropPos.y,
     pickupRadius: 22,
     bobOffset: Math.random() * 6.28,
   };
@@ -1861,6 +1863,41 @@ function isWalkable(x, y) {
   const t = map[y][x];
   if (t === T.TREE || t === T.WATER || t === T.WALL || t === T.SHOP_WALL || t === T.FENCE || t === T.BUSH) return false;
   return true;
+}
+
+// Check if a pixel position is on a walkable tile (no collision).
+// Used by dropItem() to ensure dropped items don't spawn inside walls.
+function isPixelWalkable(px, py) {
+  const tx = Math.floor(px / TILE);
+  const ty = Math.floor(py / TILE);
+  return isWalkable(tx, ty);
+}
+
+// Find a valid drop position near player (spiral search).
+// Tries the preferred offset first, then expands outward in a spiral
+// until a walkable tile is found (within maxRadius).
+function findDropPosition(centerX, centerY, offsetX, offsetY) {
+  const preferredX = centerX + offsetX;
+  const preferredY = centerY + offsetY;
+  if (isPixelWalkable(preferredX, preferredY)) return { x: preferredX, y: preferredY };
+
+  // Spiral search: try positions in expanding rings around preferred point
+  const maxRadius = 3;  // 3 tiles = 96px search radius
+  for (let r = 1; r <= maxRadius; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;  // ring only
+        const tx = Math.floor(preferredX / TILE) + dx;
+        const ty = Math.floor(preferredY / TILE) + dy;
+        if (isWalkable(tx, ty)) {
+          // Return center of the walkable tile
+          return { x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2 };
+        }
+      }
+    }
+  }
+  // Fallback: return player center (always walkable since player is standing there)
+  return { x: centerX, y: centerY };
 }
 
 function useToolOrInteract() {
