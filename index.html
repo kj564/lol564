@@ -431,8 +431,8 @@ const T = {
 
 // ===== 5-LAYER TILEMAP ARCHITECTURE =====
 // Render depth (bottom → top):
-//   Layer 1 (Ground):      base terrain — grass, sand, water, floor, shop_floor, path
-//   Layer 2 (WalkInFront): overlays under player feet — tilled, watered, flower
+//   Layer 1 (Ground):      base terrain — grass, sand, water, floor, shop_floor
+//   Layer 2 (WalkInFront): path + farm overlays (tilled, watered, flowers, crops)
 //   Layer 3 (Collision):   solid walls — wall, shop_wall, fence, bush, tree-trunk
 //   Layer 3.5 (Player):    dynamic entities (player + NPCs, Y-sorted)
 //   Layer 4 (WalkBehind):  canopy / roof overhangs — covers player from above
@@ -976,11 +976,21 @@ function getFacingTile() {
   return { px, py, fx, fy };
 }
 
+// Keep collision policy centralized so movement and the Layer 3 classification
+// agree about which map tiles are solid.
+function isSolidTile(tileId) {
+  return tileId === T.TREE ||
+    tileId === T.WATER ||
+    tileId === T.WALL ||
+    tileId === T.SHOP_WALL ||
+    tileId === T.FENCE ||
+    tileId === T.BUSH ||
+    tileId === T.POND_EDGE;
+}
+
 function isWalkable(x, y) {
   if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) return false;
-  const t = map[y][x];
-  if (t === T.TREE || t === T.WATER || t === T.WALL || t === T.SHOP_WALL || t === T.FENCE || t === T.BUSH) return false;
-  return true;
+  return !isSolidTile(map[y][x]);
 }
 
 function useToolOrInteract() {
@@ -1078,6 +1088,9 @@ function useToolOrInteract() {
   else if (selectedTool === 'axe') {
     if (tile === T.TREE) {
       map[fy][fx] = T.GRASS;
+      // Rebuild Layer 4 after removing a tree; otherwise its old canopy tiles
+      // remain floating in the world after the trunk has been chopped.
+      rebuildCanopyFromMap();
       toast('Pohon ditebang 🪵', 'info');
       spawnParticles(fx*TILE+TILE/2, fy*TILE+TILE/2, '#5a3a1a', 8);
       save();
@@ -1789,13 +1802,12 @@ function drawSleepFade() {
 // Used by render() to draw tiles in correct depth order across 3 sub-passes.
 function tileRenderLayer(tileId) {
   switch (tileId) {
-    // Layer 1 (Ground): base terrain — grass, sand, water, floor, path, tilled, watered
+    // Layer 1 (Ground): base terrain only
     case T.GRASS: case T.GRASS2: case T.SAND: case T.WATER:
-    case T.FLOOR: case T.SHOP_FLOOR: case T.PATH:
-    case T.TILLED: case T.WATERED:
+    case T.FLOOR: case T.SHOP_FLOOR:
       return 1;
-    // Layer 2 (WalkInFront): decorative overlays under player feet
-    case T.FLOWER:
+    // Layer 2 (WalkInFront): ground overlays that must render below entities
+    case T.PATH: case T.TILLED: case T.WATERED: case T.FLOWER:
       return 2;
     // Layer 3 (Collision): solid blocking tiles — walls, fences, trees, bushes
     case T.WALL: case T.SHOP_WALL: case T.FENCE: case T.BUSH: case T.TREE:
@@ -2016,8 +2028,10 @@ function render() {
   }
   // ===== PASS 3.5: Layer 3.5 (Player + NPCs) — Y-sorted dynamic entities =====
   const drawables = [];
-  for (const n of npcs) drawables.push({ y: n.y + TILE/2, kind: 'npc', ref: n });
-  drawables.push({ y: player.y, kind: 'player' });
+  // Sort by the entity's feet baseline, not its top-left / center position.
+  // Player coordinates are center-based; NPC coordinates are sprite top-left.
+  for (const n of npcs) drawables.push({ y: n.y + 32, kind: 'npc', ref: n });
+  drawables.push({ y: player.y + 20, kind: 'player' });
   drawables.sort((a, b) => a.y - b.y);
   for (const d of drawables) {
     if (d.kind === 'npc') drawNPC(d.ref);
