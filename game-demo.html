@@ -195,16 +195,64 @@
   }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
 
-  /* Pickup popup */
-  .pickup-popup {
-    position: absolute; color: #88e06a; font-weight: 800; font-size: 14px;
-    text-shadow: 0 0 6px rgba(0,0,0,0.9), 0 2px 4px rgba(0,0,0,0.9);
-    pointer-events: none; z-index: 6;
-    animation: pickupFloat 1.2s ease-out forwards;
+  /* ===== Popup Notification Queue (NEW) ===== */
+  /* Container = Vertical Layout Group via Flexbox */
+  #popup-container {
+    position: absolute;
+    top: 16px; right: 16px;
+    display: flex; flex-direction: column;  /* stack top-to-bottom */
+    gap: 8px;                                 /* spacing between popups */
+    z-index: 20;
+    pointer-events: none;                   /* don't block game input */
+    max-width: 280px;
   }
-  @keyframes pickupFloat {
-    0% { transform: translateY(0); opacity: 1; }
-    100% { transform: translateY(-40px); opacity: 0; }
+  .pickup-popup {
+    display: flex; align-items: center; gap: 10px;
+    background: linear-gradient(135deg, rgba(15,25,15,0.95), rgba(20,30,20,0.95));
+    border: 2px solid rgba(136,224,106,0.65);
+    border-radius: 10px;
+    padding: 8px 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5), 0 0 12px rgba(136,224,106,0.2);
+    /* Entry animation: slide in from right + fade in */
+    animation: popupIn 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
+    /* Transition for auto-fade (Coroutine-triggered) */
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  @keyframes popupIn {
+    from { transform: translateX(120%) scale(0.9); opacity: 0; }
+    to   { transform: translateX(0) scale(1); opacity: 1; }
+  }
+  /* Auto-fade state — injected by setTimeout after 1.5s */
+  .pickup-popup.fade {
+    opacity: 0;
+    transform: translateX(120%);  /* slide out to right */
+  }
+  /* Thumbnail image (real asset sprite, small) */
+  .pickup-popup .popup-thumb {
+    width: 32px; height: 32px;
+    image-rendering: pixelated; image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    object-fit: contain;
+    flex-shrink: 0;
+    background: rgba(0,0,0,0.4);
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .pickup-popup .popup-text {
+    flex: 1; min-width: 0;
+  }
+  .pickup-popup .popup-name {
+    font-size: 13px; font-weight: 800; color: #fff;
+    line-height: 1.2;
+  }
+  .pickup-popup .popup-action {
+    font-size: 10px; color: #88e06a; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-top: 2px;
+  }
+  .pickup-popup .popup-count {
+    font-size: 14px; font-weight: 800; color: #ffe04a;
+    margin-left: 4px;
   }
 
   /* Hint */
@@ -306,6 +354,10 @@
     </div>
 
     <div id="toast"></div>
+
+    <!-- ===== Popup Notification Queue Container ===== -->
+    <!-- Vertical Layout Group via Flexbox — stacks popups top-to-bottom -->
+    <div id="popup-container"></div>
 
     <div id="loading">
       <div class="title">🌾 Loading Assets</div>
@@ -796,9 +848,8 @@ function checkPickups() {
     const dist = Math.sqrt(dx * dx + dy * dy);
     // Trigger if distance < (player.radius + item.pickupRadius)
     if (dist < (PLAYER.radius + item.pickupRadius)) {
-      tryPickup(item);
+      tryPickup(item);  // tryPickup calls showPickupPopup() internally on success
       itemsInWorld.splice(i, 1);  // Destroy(gameObject) equivalent
-      showPickupPopup(item);
     }
   }
 }
@@ -812,6 +863,7 @@ function tryPickup(item) {
     if (slot && slot.id === item.id && slot.quantity < db.maxStack) {
       slot.quantity++;
       toast(`+1 ${db.name} (stacked: ×${slot.quantity})`);
+      showPickupPopup(item, slot.quantity, 'stacked');   // trigger popup notification
       if (isMenuOpen && activeTab === 'bag') renderInventory();
       return;
     }
@@ -821,6 +873,7 @@ function tryPickup(item) {
     if (!inventoryData[i]) {
       inventoryData[i] = { id: item.id, quantity: 1 };
       toast(`+1 ${db.name} (new slot ${i+1})`);
+      showPickupPopup(item, 1, 'new');   // trigger popup notification
       if (isMenuOpen && activeTab === 'bag') renderInventory();
       return;
     }
@@ -830,18 +883,83 @@ function tryPickup(item) {
   itemsInWorld.push(item);  // re-add since we already spliced
 }
 
-// Pickup popup (floating "+1 Item Name" text)
-function showPickupPopup(item) {
+// ===== Popup Notification Queue System =====
+// Queue management: activePopups[] array, MAX_POPUPS limit, shift (dequeue) oldest
+// Vertical Layout Group: #popup-container uses CSS flexbox column with gap
+// Coroutine Auto-Fade: setTimeout 1.5s → .fade class → setTimeout 0.4s → .remove()
+const MAX_POPUPS = 3;
+const POPUP_LIFETIME_MS = 1500;   // visible duration before fade
+const POPUP_FADE_MS = 400;        // fade transition duration
+const activePopups = [];           // queue of {el, item} entries
+
+function showPickupPopup(item, count, actionType) {
   const db = ItemDatabase[item.id];
+  const container = document.getElementById('popup-container');
+  if (!container) return;
+
+  // ===== Create popup DOM element =====
   const popup = document.createElement('div');
   popup.className = 'pickup-popup';
-  popup.textContent = `+1 ${db.name}`;
-  const sx = item.x - camera.x;
-  const sy = item.y - camera.y - 20;
-  popup.style.left = sx + 'px';
-  popup.style.top = sy + 'px';
-  document.getElementById('game-container').appendChild(popup);
-  setTimeout(() => popup.remove(), 1200);
+
+  // Real asset thumbnail (img element pointing to actual sprite file)
+  const thumb = document.createElement('img');
+  thumb.className = 'popup-thumb';
+  const assetPath = ASSET_PATHS[db.assetKey];
+  if (assetPath && assets[db.assetKey] && assets[db.assetKey].complete) {
+    thumb.src = assetPath;  // direct path to real asset file
+  }
+  thumb.alt = db.name;
+  thumb.onerror = () => { thumb.style.display = 'none'; };  // hide if fails
+  popup.appendChild(thumb);
+
+  // Text content (name + action label)
+  const textEl = document.createElement('div');
+  textEl.className = 'popup-text';
+  const nameEl = document.createElement('div');
+  nameEl.className = 'popup-name';
+  nameEl.textContent = db.name;
+  textEl.appendChild(nameEl);
+  const actionEl = document.createElement('div');
+  actionEl.className = 'popup-action';
+  actionEl.textContent = actionType === 'stacked' ? `Stacked ×${count}` : 'Dipungut';
+  textEl.appendChild(actionEl);
+  popup.appendChild(textEl);
+
+  // Count badge
+  const countEl = document.createElement('div');
+  countEl.className = 'popup-count';
+  countEl.textContent = '+1';
+  popup.appendChild(countEl);
+
+  container.appendChild(popup);
+
+  // ===== Enqueue =====
+  const entry = { el: popup, item, timers: [] };
+  activePopups.push(entry);
+
+  // ===== Queue limit: shift (dequeue) oldest if exceeds MAX_POPUPS =====
+  if (activePopups.length > MAX_POPUPS) {
+    const evicted = activePopups.shift();   // Dequeue oldest
+    if (evicted) {
+      evicted.timers.forEach((t) => clearTimeout(t));  // cancel pending timers
+      evicted.el.remove();   // Destroy from DOM immediately
+    }
+  }
+
+  // ===== Coroutine: Auto-Fade & Destroy =====
+  // Step 1: after POPUP_LIFETIME_MS, inject .fade class → triggers CSS transition
+  const fadeTimer = setTimeout(() => {
+    popup.classList.add('fade');
+  }, POPUP_LIFETIME_MS);
+  entry.timers.push(fadeTimer);
+
+  // Step 2: after fade transition completes, remove from DOM + dequeue from array
+  const destroyTimer = setTimeout(() => {
+    popup.remove();   // Destroy from DOM
+    const idx = activePopups.indexOf(entry);
+    if (idx !== -1) activePopups.splice(idx, 1);  // remove from queue
+  }, POPUP_LIFETIME_MS + POPUP_FADE_MS);
+  entry.timers.push(destroyTimer);
 }
 
 // ===== Inventory UI (drag-drop) =====
