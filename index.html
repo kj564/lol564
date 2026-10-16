@@ -502,6 +502,61 @@
   .ui-map-info ul { padding-left: 18px; }
   .ui-map-info li { margin: 3px 0; }
   .ui-val { color: #ffe04a; font-weight: 700; }
+
+  /* ===== Popup Notification Queue (top-right corner) ===== */
+  #popup-container {
+    position: absolute;
+    top: 16px; right: 16px;
+    display: flex; flex-direction: column;
+    gap: 8px;
+    z-index: 28;
+    pointer-events: none;
+    max-width: 280px;
+  }
+  .pickup-popup {
+    display: flex; align-items: center; gap: 10px;
+    background: linear-gradient(135deg, rgba(15,25,15,0.95), rgba(20,30,20,0.95));
+    border: 2px solid rgba(136,224,106,0.65);
+    border-radius: 10px;
+    padding: 8px 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5), 0 0 12px rgba(136,224,106,0.2);
+    animation: popupIn 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  @keyframes popupIn {
+    from { transform: translateX(120%) scale(0.9); opacity: 0; }
+    to   { transform: translateX(0) scale(1); opacity: 1; }
+  }
+  .pickup-popup.fade {
+    opacity: 0;
+    transform: translateX(120%);
+  }
+  .pickup-popup .popup-thumb {
+    width: 32px; height: 32px;
+    image-rendering: pixelated; image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    object-fit: contain;
+    flex-shrink: 0;
+    background: rgba(0,0,0,0.4);
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .pickup-popup .popup-text { flex: 1; min-width: 0; }
+  .pickup-popup .popup-name {
+    font-size: 13px; font-weight: 800; color: #fff;
+    line-height: 1.2;
+  }
+  .pickup-popup .popup-action {
+    font-size: 10px; color: #88e06a; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-top: 2px;
+  }
+  .pickup-popup.gold .popup-action { color: #ffe04a; }
+  .pickup-popup.warn .popup-action { color: #ff8a5c; }
+  .pickup-popup .popup-count {
+    font-size: 14px; font-weight: 800; color: #ffe04a;
+    margin-left: 4px;
+  }
 </style>
 </head>
 <body>
@@ -604,6 +659,9 @@
   </div>
 
   <div id="toasts"></div>
+
+  <!-- Popup Notification Queue (top-right, FIFO with max 3) -->
+  <div id="popup-container"></div>
 
   <div id="dpad">
     <div class="dpad-btn up"    data-dir="up">▲</div>
@@ -1418,6 +1476,143 @@ function toast(msg, type = '') {
   setTimeout(() => el.remove(), 2400);
 }
 
+// ---------- Popup Notification Queue (top-right corner) ----------
+// FIFO queue with MAX_POPUPS limit. Auto-fade & destroy via setTimeout + CSS.
+const MAX_POPUPS = 3;
+const POPUP_LIFETIME_MS = 1800;   // visible duration before fade
+const POPUP_FADE_MS = 400;        // fade transition duration
+const activePopups = [];           // queue of {el, timers[]}
+
+// assetKey → real asset path (reuse INV_ASSET_PATHS + add more for crops/tools)
+const POPUP_ASSET_PATHS = {
+  // Tools
+  hoe:    INV_ASSET_PATHS.tool_hoe,
+  water:  INV_ASSET_PATHS.tool_water,
+  sickle: INV_ASSET_PATHS.tool_sickle,
+  axe:    INV_ASSET_PATHS.tool_axe,
+  pickaxe:INV_ASSET_PATHS.tool_pickaxe,
+  // Crops (harvested)
+  parsnip: INV_ASSET_PATHS.crop_parsnip,
+  potato:  INV_ASSET_PATHS.crop_potato,
+  carrot:  INV_ASSET_PATHS.crop_carrot,
+  pumpkin: INV_ASSET_PATHS.crop_pumpkin,
+  cabbage: INV_ASSET_PATHS.crop_cabbage,
+  // Food
+  egg:  INV_ASSET_PATHS.food_egg,
+  fish: INV_ASSET_PATHS.food_fish,
+  milk: INV_ASSET_PATHS.food_milk,
+  // Gold icon (use milk sprite as gold-ish placeholder)
+  gold: INV_ASSET_PATHS.food_milk,
+};
+
+// Show popup notification. Falls back gracefully if assetKey not in DB.
+//   assetKey: logical key (e.g. 'parsnip', 'hoe', 'gold')
+//   name: display name (e.g. 'Parsnip', 'Gold')
+//   actionType: 'pickup' | 'harvest' | 'plant' | 'water' | 'buy' | 'sell' | 'gold'
+//   countText: badge text (e.g. '+1', '+50g')
+function showPopup(assetKey, name, actionType, countText) {
+  const container = document.getElementById('popup-container');
+  if (!container) return;
+
+  // Map logical key → invAssets key (which matches INV_ASSET_PATHS keys)
+  const ASSET_KEY_MAP = {
+    parsnip: 'crop_parsnip',
+    potato:  'crop_potato',
+    carrot:  'crop_carrot',
+    pumpkin: 'crop_pumpkin',
+    cabbage: 'crop_cabbage',
+    tomato:  'crop_potato',    // fallback (no tomato sprite)
+    corn:    'crop_parsnip',   // fallback (no corn sprite, uses parsnip)
+    hoe:     'tool_hoe',
+    water:   'tool_water',
+    sickle:  'tool_sickle',
+    axe:     'tool_axe',
+    pickaxe: 'tool_pickaxe',
+    seeds:   'crop_parsnip',   // generic seed icon
+    egg:     'food_egg',
+    fish:    'food_fish',
+    milk:    'food_milk',
+    gold:    'food_milk',      // gold-ish placeholder
+  };
+  const invKey = ASSET_KEY_MAP[assetKey] || assetKey;
+  const assetPath = INV_ASSET_PATHS[invKey];
+
+  // Determine style variant
+  let variant = '';
+  if (actionType === 'gold' || actionType === 'sell') variant = 'gold';
+  else if (actionType === 'buy') variant = 'warn';
+
+  // Create popup DOM
+  const popup = document.createElement('div');
+  popup.className = 'pickup-popup' + (variant ? ' ' + variant : '');
+
+  // Thumbnail (real asset sprite)
+  const thumb = document.createElement('img');
+  thumb.className = 'popup-thumb';
+  if (assetPath && invAssets[invKey] && invAssets[invKey].complete) {
+    thumb.src = 'assets/' + assetPath;
+  }
+  thumb.alt = name;
+  thumb.onerror = () => { thumb.style.display = 'none'; };
+  popup.appendChild(thumb);
+
+  // Text content
+  const textEl = document.createElement('div');
+  textEl.className = 'popup-text';
+  const nameEl = document.createElement('div');
+  nameEl.className = 'popup-name';
+  nameEl.textContent = name;
+  textEl.appendChild(nameEl);
+  const actionEl = document.createElement('div');
+  actionEl.className = 'popup-action';
+  const actionLabels = {
+    pickup: 'Dipungut',
+    harvest: 'Dipanen',
+    plant: 'Ditanam',
+    water: 'Disiram',
+    buy: 'Dibeli',
+    sell: 'Terjual',
+    gold: 'Gold',
+  };
+  actionEl.textContent = actionLabels[actionType] || actionType;
+  textEl.appendChild(actionEl);
+  popup.appendChild(textEl);
+
+  // Count badge
+  const countEl = document.createElement('div');
+  countEl.className = 'popup-count';
+  countEl.textContent = countText;
+  popup.appendChild(countEl);
+
+  container.appendChild(popup);
+
+  // Enqueue
+  const entry = { el: popup, timers: [] };
+  activePopups.push(entry);
+
+  // Queue limit: shift (dequeue) oldest if exceeds MAX_POPUPS
+  if (activePopups.length > MAX_POPUPS) {
+    const evicted = activePopups.shift();
+    if (evicted) {
+      evicted.timers.forEach((t) => clearTimeout(t));
+      evicted.el.remove();
+    }
+  }
+
+  // Coroutine: Auto-Fade & Destroy
+  const fadeTimer = setTimeout(() => {
+    popup.classList.add('fade');
+  }, POPUP_LIFETIME_MS);
+  entry.timers.push(fadeTimer);
+
+  const destroyTimer = setTimeout(() => {
+    popup.remove();
+    const idx = activePopups.indexOf(entry);
+    if (idx !== -1) activePopups.splice(idx, 1);
+  }, POPUP_LIFETIME_MS + POPUP_FADE_MS);
+  entry.timers.push(destroyTimer);
+}
+
 // ---------- Help modal ----------
 function toggleHelp(show) {
   document.getElementById('help-modal').classList.toggle('show', show);
@@ -1486,6 +1681,7 @@ function useToolOrInteract() {
           wateredToday: (tile === T.WATERED),
         };
         toast(`Ditanam: ${CROPS[selectedSeed].name}`, 'info');
+        showPopup(selectedSeed, CROPS[selectedSeed].name, 'plant', '+1');  // popup
         renderToolbar(); updateHUD();
         save();
       } else {
@@ -1533,6 +1729,7 @@ function useToolOrInteract() {
       player.inventory[crop.type] = (player.inventory[crop.type] || 0) + 1;
       syncInvItem(crop.type, player.inventory[crop.type]);   // sync hotbar/bag count
       toast(`Dipanen: ${CROPS[crop.type].name} (+1)`, 'gold');
+      showPopup(crop.type, CROPS[crop.type].name, 'harvest', '+1');  // popup notification
       cropMap[fy][fx] = null;
       map[fy][fx] = T.TILLED;
       spawnParticles(fx*TILE+TILE/2, fy*TILE+TILE/2, CROPS[crop.type].color, 8);
@@ -1672,6 +1869,7 @@ function openShop() {
           player.gold -= cost;
           player.seeds[seed] = (player.seeds[seed] || 0) + 1;
           toast(`Dibeli: Benih ${CROPS[seed].name} (-${cost}g)`, 'gold');
+          showPopup(seed, 'Benih ' + CROPS[seed].name, 'buy', `-${cost}g`);  // popup
           updateHUD(); renderToolbar();
           openShop(); // refresh
           save();
@@ -1683,6 +1881,7 @@ function openShop() {
           player.inventory[seed]--;
           player.gold += CROPS[seed].sell;
           toast(`Terjual: ${CROPS[seed].name} (+${CROPS[seed].sell}g)`, 'gold');
+          showPopup(seed, CROPS[seed].name, 'sell', `+${CROPS[seed].sell}g`);  // popup
           updateHUD(); renderToolbar();
           openShop();
           save();
