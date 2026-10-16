@@ -306,6 +306,202 @@
     animation: spin 0.9s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ===== UI Menu Overlay (Tab key) ===== */
+  #ui-menu {
+    position: fixed; inset: 0;
+    display: none;
+    align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    z-index: 35;
+    pointer-events: none;
+  }
+  #ui-menu.open { display: flex; pointer-events: auto; }
+  .ui-panel {
+    width: min(560px, 92vw);
+    max-height: 86vh;
+    background: linear-gradient(180deg, #1a2a1a 0%, #0f1a0f 100%);
+    border: 3px solid rgba(180, 220, 120, 0.65);
+    border-radius: 14px;
+    box-shadow: 0 16px 50px rgba(0, 0, 0, 0.75), inset 0 0 40px rgba(124, 92, 255, 0.06);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    animation: dialogIn 0.18s ease-out;
+  }
+  @keyframes dialogIn { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .ui-panel-header {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 14px;
+    background: rgba(180, 220, 120, 0.08);
+    border-bottom: 2px solid rgba(180, 220, 120, 0.4);
+  }
+  .ui-tab-btn {
+    flex: 1;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #c8d8b0;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .ui-tab-btn:hover { background: rgba(180, 220, 120, 0.12); }
+  .ui-tab-btn.active {
+    background: rgba(180, 220, 120, 0.22);
+    border-color: rgba(180, 220, 120, 0.7);
+    color: #fff;
+  }
+  .ui-panel-close {
+    cursor: pointer;
+    color: #88a06a;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .ui-panel-close:hover { background: rgba(255, 90, 90, 0.15); color: #ff8a8a; }
+  .ui-panel-body {
+    padding: 16px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .ui-panel-body::-webkit-scrollbar { width: 8px; }
+  .ui-panel-body::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+  .ui-panel-body::-webkit-scrollbar-thumb { background: rgba(180, 220, 120, 0.4); border-radius: 4px; }
+  .ui-tab-page { display: none; }
+  .ui-tab-page.active { display: block; animation: dialogIn 0.18s ease-out; }
+  .ui-panel-footer {
+    padding: 8px 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 11px;
+    color: #88a06a;
+    text-align: right;
+  }
+  .ui-panel-footer kbd {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 10px;
+    color: #c4dcff;
+    font-weight: 700;
+  }
+
+  /* Status tab */
+  .ui-portrait-row { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
+  .ui-portrait {
+    width: 64px; height: 64px;
+    background: rgba(0,0,0,0.4);
+    border: 2px solid rgba(180, 220, 120, 0.5);
+    border-radius: 8px;
+    image-rendering: pixelated;
+  }
+  .ui-name { font-size: 18px; font-weight: 800; color: #fff; }
+  .ui-title { font-size: 11px; color: #88a06a; }
+  .ui-status-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .ui-status-row {
+    display: flex; justify-content: space-between;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .ui-status-row .label { color: #88a06a; font-weight: 600; }
+  .ui-status-row .value { color: #ffe04a; font-weight: 700; }
+
+  /* Bag tab — drag & drop grid */
+  .ui-bag-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: #88a06a;
+  }
+  .ui-bag-count { color: #ffe04a; font-weight: 700; }
+  .ui-inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .inv-slot {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    background: rgba(255, 255, 255, 0.04);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  }
+  .inv-slot:hover { border-color: rgba(180, 220, 120, 0.4); background: rgba(180, 220, 120, 0.05); }
+  .inv-slot.drag-over {
+    border-color: #ffd54a;
+    background: rgba(255, 213, 74, 0.15);
+    transform: scale(1.04);
+    box-shadow: 0 0 16px rgba(255, 213, 74, 0.35);
+  }
+  .inv-slot.dragging { opacity: 0.4; transform: scale(0.95); }
+  .inv-slot.empty::before {
+    content: '';
+    width: 50%; height: 50%;
+    border: 2px dashed rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+  }
+  .inv-item {
+    width: 80%; height: 80%;
+    cursor: grab;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .inv-item:active { cursor: grabbing; }
+  .inv-item canvas {
+    max-width: 100%; max-height: 100%;
+    image-rendering: pixelated;
+    pointer-events: none;
+  }
+  .inv-count {
+    position: absolute;
+    bottom: 4px; right: 6px;
+    background: rgba(0, 0, 0, 0.85);
+    color: #ffe04a;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 213, 74, 0.5);
+    pointer-events: none;
+  }
+  .inv-tooltip {
+    position: absolute;
+    bottom: 100%; left: 50%;
+    transform: translateX(-50%) translateY(-4px);
+    background: rgba(0, 0, 0, 0.92);
+    color: #fff;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(180, 220, 120, 0.5);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 5;
+  }
+  .inv-slot:hover .inv-tooltip { opacity: 1; }
+
+  /* Map tab */
+  .ui-map-info { font-size: 12px; line-height: 1.6; color: #c8d8b0; }
+  .ui-map-info h3 { color: #ffe04a; font-size: 14px; margin: 10px 0 6px; font-weight: 800; }
+  .ui-map-info ul { padding-left: 18px; }
+  .ui-map-info li { margin: 3px 0; }
+  .ui-val { color: #ffe04a; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -342,6 +538,69 @@
 
   <div id="menu">
     <div class="menu-panel" id="menu-panel"></div>
+  </div>
+
+  <!-- ===== UI Menu Overlay (Tab key — Bag/Status/Map) ===== -->
+  <div id="ui-menu">
+    <div class="ui-panel">
+      <div class="ui-panel-header">
+        <button class="ui-tab-btn active" data-tab="status">📊 Status</button>
+        <button class="ui-tab-btn" data-tab="bag">🎒 Bag</button>
+        <button class="ui-tab-btn" data-tab="map">🗺️ Map</button>
+        <span class="ui-panel-close" id="ui-close">✕</span>
+      </div>
+      <div class="ui-panel-body">
+        <!-- Tab 1: Status -->
+        <div class="ui-tab-page active" data-tab="status">
+          <div class="ui-portrait-row">
+            <canvas class="ui-portrait" id="ui-portrait" width="64" height="64"></canvas>
+            <div>
+              <div class="ui-name">Petani Boy</div>
+              <div class="ui-title" id="ui-title">HARVEST VALE — Spring, Day 1</div>
+            </div>
+          </div>
+          <div class="ui-status-grid" id="ui-status-grid"></div>
+        </div>
+        <!-- Tab 2: Bag (Drag & Drop inventory) -->
+        <div class="ui-tab-page" data-tab="bag">
+          <div class="ui-bag-header">
+            <span>🎒 Drag item untuk swap slot</span>
+            <span class="ui-bag-count" id="ui-inv-count">0 / 12</span>
+          </div>
+          <div class="ui-inventory-grid" id="inventoryGrid"></div>
+        </div>
+        <!-- Tab 3: Map Info -->
+        <div class="ui-tab-page" data-tab="map">
+          <div class="ui-map-info">
+            <h3>🌍 Harvest Vale</h3>
+            <p>Lembah subur di pinggir dunia, rumah petani muda &amp; tetua desa.</p>
+            <h3>📍 Lokasi Penting</h3>
+            <ul>
+              <li><strong>Pondok Pemain</strong> — bottom-left, tidur &amp; istirahat</li>
+              <li><strong>Toko Benih</strong> — top-right, beli/jual</li>
+              <li><strong>Kolam</strong> — top-left, isi ulang air</li>
+              <li><strong>Area Bertani</strong> — tengah, dikelilingi pagar</li>
+            </ul>
+            <h3>🎯 Tips</h3>
+            <ul>
+              <li>Siram tanaman tiap hari supaya tumbuh</li>
+              <li>Tidur di rumah untuk ganti hari &amp; pulih energi</li>
+              <li>Isi penyiram di kolam (tile biru)</li>
+              <li>Panen tanaman matang (✨) lalu jual di toko</li>
+            </ul>
+            <h3>🗺️ Koordinat</h3>
+            <ul>
+              <li>Tile: <span class="ui-val" id="ui-map-tile">—</span></li>
+              <li>Pixel: <span class="ui-val" id="ui-map-px">—</span></li>
+              <li>Kamera: <span class="ui-val" id="ui-map-cam">—</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="ui-panel-footer">
+        <kbd>Tab</kbd> / <kbd>Esc</kbd> tutup · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> ganti tab
+      </div>
+    </div>
   </div>
 
   <div id="toasts"></div>
@@ -552,6 +811,49 @@ let isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 let dialogQueue = [];
 let dialogActive = false;
 let menuOpen = null; // 'shop' | 'inventory' | null
+let isMenuOpen = false;   // Bag/Menu overlay (Tab key) — freezes player movement
+let activeTab = 'status'; // 'status' | 'bag' | 'map'
+const INV_SLOTS = 12;
+
+// ===== Inventory Data State (Drag-and-Drop) =====
+// Each slot: null (empty) or {id, name, quantity, assetKey, type}
+// Synced with player.seeds/inventory so crops & seeds reflect in Bag.
+// Tools (hoe/water/axe/sickle) always present (not consumable).
+function buildInventoryData() {
+  return [
+    { id: 'hoe',       name: 'Cangkul',       quantity: 1, assetKey: 'tool_hoe',     type: 'tool' },
+    { id: 'water',     name: 'Penyiram',      quantity: player.water, assetKey: 'tool_water', type: 'tool' },
+    { id: 'sickle',    name: 'Sabit',         quantity: 1, assetKey: 'tool_sickle',  type: 'tool' },
+    { id: 'axe',       name: 'Kapak',         quantity: 1, assetKey: 'tool_axe',     type: 'tool' },
+    { id: 'parsnip_seed', name: 'Benih Parsnip', quantity: player.seeds.parsnip, assetKey: 'crop_parsnip', type: 'seed' },
+    { id: 'potato_seed',  name: 'Benih Kentang', quantity: player.seeds.potato,  assetKey: 'crop_potato',  type: 'seed' },
+    { id: 'parsnip',   name: 'Parsnip',       quantity: player.inventory.parsnip, assetKey: 'crop_parsnip', type: 'crop' },
+    { id: 'potato',    name: 'Kentang',       quantity: player.inventory.potato,  assetKey: 'crop_potato',  type: 'crop' },
+    { id: 'tomato',    name: 'Tomat',          quantity: player.inventory.tomato, assetKey: 'crop_potato',  type: 'crop' }, // uses potato sprite as fallback
+    { id: 'corn',      name: 'Jagung',         quantity: player.inventory.corn,   assetKey: 'crop_parsnip', type: 'crop' }, // uses parsnip sprite as fallback
+    null,
+    null,
+  ];
+}
+let inventoryData = buildInventoryData();
+
+// Asset paths for inventory icons (REAL files from /assets/)
+const INV_ASSET_PATHS = {
+  tool_hoe:      'ninja-adventure/Items/Tool/Hoe.png',
+  tool_water:    'ninja-adventure/Items/Tool/WateringCan.png',
+  tool_sickle:   'ninja-adventure/Items/Tool/Sickle.png',
+  tool_axe:      'ninja-adventure/Items/Tool/Axe.png',
+  crop_parsnip:  'Elements/Crops/parsnip_05.png',
+  crop_potato:   'Elements/Crops/potato_05.png',
+  crop_carrot:   'Elements/Crops/carrot_05.png',
+  crop_pumpkin:  'Elements/Crops/pumpkin_05.png',
+  crop_cabbage:  'Elements/Crops/cabbage_05.png',
+  food_egg:      'Elements/Crops/egg.png',
+  food_fish:     'Elements/Crops/fish.png',
+  food_milk:     'Elements/Crops/milk.png',
+  player_face:   'ninja-adventure/Characters/Boy_faceset.png',
+};
+const invAssets = {};  // loaded async at init
 let toastList = [];
 let nearbyAction = null; // {type:'shop'|'sleep'|'npc', x, y}
 let npcs = [];
@@ -814,6 +1116,38 @@ function rebuildDecorFromMap() {
 
 // ---------- Input ----------
 window.addEventListener('keydown', (e) => {
+  // ===== Tab key — toggle UI menu (prevent browser tab focus) =====
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    isMenuOpen = !isMenuOpen;
+    document.getElementById('ui-menu').classList.toggle('open', isMenuOpen);
+    if (isMenuOpen) {
+      // Refresh inventory data + render (sync with current game state)
+      inventoryData = buildInventoryData();
+      renderInventory();
+      renderStatusTab();
+      toast('🎒 Menu dibuka — pergerakan di-freeze');
+    } else {
+      toast('✅ Menu ditutup — lanjut main');
+    }
+    return;
+  }
+  // Esc closes menu (priority over dialog/shop)
+  if (e.key === 'Escape' && isMenuOpen) {
+    isMenuOpen = false;
+    document.getElementById('ui-menu').classList.remove('open');
+    toast('✅ Menu ditutup');
+    return;
+  }
+  // Tab switch (1/2/3) only when menu open
+  if (isMenuOpen) {
+    const k = e.key.toLowerCase();
+    if (k === '1') { switchTab('status'); return; }
+    if (k === '2') { switchTab('bag'); return; }
+    if (k === '3') { switchTab('map'); return; }
+    e.preventDefault();
+    return;   // block all other input while menu open
+  }
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
   const k = e.key.toLowerCase();
   keys[k] = true;
@@ -1265,7 +1599,7 @@ function updateParticles(dt) {
 
 // ---------- Movement ----------
 function updatePlayer(dt) {
-  if (dialogActive || menuOpen) { player.moving = false; return; }
+  if (isMenuOpen || dialogActive || menuOpen) { player.moving = false; return; }
   let dx = 0, dy = 0;
   if (keys['w'] || keys['arrowup'] || mobileMove.up) dy -= 1;
   if (keys['s'] || keys['arrowdown'] || mobileMove.down) dy += 1;
@@ -2117,6 +2451,217 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
+// ===== UI Menu Functions =====
+// Switch active tab page (Status/Bag/Map)
+function switchTab(tabName) {
+  activeTab = tabName;
+  document.querySelectorAll('.ui-tab-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.tab === tabName);
+  });
+  document.querySelectorAll('.ui-tab-page').forEach((page) => {
+    page.classList.toggle('active', page.dataset.tab === tabName);
+  });
+  if (tabName === 'bag') {
+    inventoryData = buildInventoryData();
+    renderInventory();
+  } else if (tabName === 'status') {
+    renderStatusTab();
+    drawPortrait();
+  } else if (tabName === 'map') {
+    updateMapTab();
+  }
+}
+// Tab button click handlers
+document.querySelectorAll('.ui-tab-btn').forEach((btn) => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+// Close button
+document.getElementById('ui-close').addEventListener('click', () => {
+  isMenuOpen = false;
+  document.getElementById('ui-menu').classList.remove('open');
+  toast('✅ Menu ditutup');
+});
+
+// ===== Status Tab Renderer =====
+function renderStatusTab() {
+  const grid = document.getElementById('ui-status-grid');
+  if (!grid) return;
+  const h = Math.floor(timeOfDay / 60);
+  const m = Math.floor(timeOfDay % 60);
+  const timeStr = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  const totalCrops = Object.values(player.inventory).reduce((a, b) => a + b, 0);
+  const totalSeeds = Object.values(player.seeds).reduce((a, b) => a + b, 0);
+  const title = document.getElementById('ui-title');
+  if (title) title.textContent = `HARVEST VALE — ${seasonLabel(season)}, Day ${day}`;
+  grid.innerHTML = `
+    <div class="ui-status-row"><span class="label">💰 Gold</span><span class="value">${player.gold}g</span></div>
+    <div class="ui-status-row"><span class="label">⚡ Energy</span><span class="value">${player.energy} / 100</span></div>
+    <div class="ui-status-row"><span class="label">📅 Day</span><span class="value">${day}</span></div>
+    <div class="ui-status-row"><span class="label">🌿 Season</span><span class="value">${seasonLabel(season)} (${seasonDay})</span></div>
+    <div class="ui-status-row"><span class="label">🕐 Time</span><span class="value">${timeStr}</span></div>
+    <div class="ui-status-row"><span class="label">💧 Water</span><span class="value">${player.water} / ${player.maxWater}</span></div>
+    <div class="ui-status-row"><span class="label">🌾 Crops</span><span class="value">${totalCrops}</span></div>
+    <div class="ui-status-row"><span class="label">🌱 Seeds</span><span class="value">${totalSeeds}</span></div>
+  `;
+}
+
+// ===== Portrait Renderer =====
+function drawPortrait() {
+  const pc = document.getElementById('ui-portrait');
+  if (!pc) return;
+  const pctx = pc.getContext('2d');
+  pctx.imageSmoothingEnabled = false;
+  pctx.clearRect(0, 0, 64, 64);
+  const img = invAssets.player_face;
+  if (img && img.complete && img.naturalWidth) {
+    pctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, 0, 0, 64, 64);
+  } else {
+    // Fallback: draw player sprite
+    pctx.fillStyle = '#ff5722';
+    pctx.fillRect(20, 20, 24, 24);
+  }
+}
+
+// ===== Map Tab Live Update =====
+function updateMapTab() {
+  const tile = document.getElementById('ui-map-tile');
+  const px = document.getElementById('ui-map-px');
+  const cam = document.getElementById('ui-map-cam');
+  if (tile) tile.textContent = `(${Math.floor(player.x / TILE)}, ${Math.floor(player.y / TILE)})`;
+  if (px) px.textContent = `(${Math.round(player.x)}, ${Math.round(player.y)})`;
+  if (cam) cam.textContent = `(${Math.round(camera.x)}, ${Math.round(camera.y)})`;
+}
+
+// ===== Inventory Grid Renderer (Drag-and-Drop) =====
+function renderInventory() {
+  const grid = document.getElementById('inventoryGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  let occupied = 0;
+  for (let i = 0; i < INV_SLOTS; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'inv-slot';
+    slot.dataset.slotIndex = i;
+    if (!inventoryData[i]) slot.classList.add('empty');
+
+    // Drop target listeners
+    slot.addEventListener('dragover', handleDragOver);
+    slot.addEventListener('drop', handleDrop);
+    slot.addEventListener('dragleave', handleDragLeave);
+
+    const item = inventoryData[i];
+    if (item) {
+      occupied++;
+      const itemEl = document.createElement('div');
+      itemEl.className = 'inv-item';
+      itemEl.draggable = true;
+      itemEl.dataset.slotIndex = i;
+      itemEl.dataset.itemId = item.id;
+
+      // Render real sprite to canvas (NOT placeholder colors)
+      const itemCanvas = document.createElement('canvas');
+      itemCanvas.width = 48;
+      itemCanvas.height = 48;
+      const ictx = itemCanvas.getContext('2d');
+      ictx.imageSmoothingEnabled = false;
+      const img = invAssets[item.assetKey];
+      if (img && img.complete && img.naturalWidth) {
+        const sw = img.naturalWidth, sh = img.naturalHeight;
+        const scale = Math.min(48 / sw, 48 / sh, 4);
+        const dw = sw * scale, dh = sh * scale;
+        ictx.drawImage(img, 0, 0, sw, sh, (48 - dw) / 2, (48 - dh) / 2, dw, dh);
+      } else {
+        ictx.fillStyle = '#444';
+        ictx.fillRect(8, 8, 32, 32);
+      }
+      itemEl.appendChild(itemCanvas);
+
+      // Drag source listeners
+      itemEl.addEventListener('dragstart', handleDragStart);
+      itemEl.addEventListener('dragend', handleDragEnd);
+
+      if (item.quantity > 1) {
+        const count = document.createElement('div');
+        count.className = 'inv-count';
+        count.textContent = '×' + item.quantity;
+        slot.appendChild(count);
+      }
+
+      const tip = document.createElement('div');
+      tip.className = 'inv-tooltip';
+      tip.textContent = `${item.name} (${item.type})`;
+      slot.appendChild(tip);
+
+      slot.appendChild(itemEl);
+    }
+    grid.appendChild(slot);
+  }
+  const countEl = document.getElementById('ui-inv-count');
+  if (countEl) countEl.textContent = `${occupied} / ${INV_SLOTS}`;
+}
+
+// ===== Drag-and-Drop Handlers (HTML5 API → Unity lifecycle mimic) =====
+let draggedFromSlot = null;
+function handleDragStart(e) {
+  const slotIndex = parseInt(e.target.dataset.slotIndex, 10);
+  draggedFromSlot = slotIndex;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', String(slotIndex));
+  e.target.closest('.inv-slot').classList.add('dragging');
+  toast(`📤 Picked up: ${inventoryData[slotIndex]?.name || 'item'}`);
+}
+function handleDragOver(e) {
+  e.preventDefault();   // MUST preventDefault to allow drop
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+}
+function handleDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  const targetSlot = parseInt(e.currentTarget.dataset.slotIndex, 10);
+  const sourceSlot = parseInt(e.dataTransfer.getData('text/plain') || draggedFromSlot, 10);
+  e.currentTarget.classList.remove('drag-over');
+  document.querySelectorAll('.inv-slot.dragging').forEach((s) => s.classList.remove('dragging'));
+  if (isNaN(sourceSlot) || sourceSlot === targetSlot) {
+    draggedFromSlot = null;
+    return;
+  }
+  // SWAP LOGIC: exchange inventoryData[source] ↔ inventoryData[target]
+  const tmp = inventoryData[targetSlot];
+  inventoryData[targetSlot] = inventoryData[sourceSlot];
+  inventoryData[sourceSlot] = tmp;
+  renderInventory();
+  const moved = inventoryData[targetSlot];
+  toast(moved ? `🔄 Swapped: ${moved.name} → slot ${targetSlot + 1}` : `🔄 Moved to slot ${targetSlot + 1}`);
+  draggedFromSlot = null;
+}
+function handleDragEnd(e) {
+  document.querySelectorAll('.inv-slot.dragging, .inv-slot.drag-over').forEach((s) => {
+    s.classList.remove('dragging', 'drag-over');
+  });
+  draggedFromSlot = null;
+}
+
+// ===== Async load inventory assets =====
+function loadInvAssets() {
+  return new Promise((resolve) => {
+    const keys = Object.keys(INV_ASSET_PATHS);
+    let loaded = 0;
+    if (keys.length === 0) { resolve(); return; }
+    keys.forEach((key) => {
+      const img = new Image();
+      img.onload = img.onerror = () => {
+        loaded++;
+        if (img.naturalWidth) invAssets[key] = img;
+        if (loaded === keys.length) resolve();
+      };
+      img.src = 'assets/' + INV_ASSET_PATHS[key];
+    });
+  });
+}
+
 // ---------- Init ----------
 function init() {
   resizeCanvas();
@@ -2133,6 +2678,12 @@ function init() {
     renderToolbar();
     updateHUD();
   }
+  // Pre-load inventory assets (async, non-blocking — game starts immediately)
+  loadInvAssets().then(() => {
+    // Refresh bag if currently open
+    if (isMenuOpen && activeTab === 'bag') renderInventory();
+    if (isMenuOpen && activeTab === 'status') drawPortrait();
+  });
   // Auto-save every 5 sec
   setInterval(save, 5000);
   gameStarted = true;
