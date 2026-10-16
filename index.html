@@ -503,6 +503,57 @@
   .ui-map-info li { margin: 3px 0; }
   .ui-val { color: #ffe04a; font-weight: 700; }
 
+  /* ===== Pause Menu Overlay ===== */
+  #pause-menu {
+    position: fixed; inset: 0;
+    display: none;
+    align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(6px);
+    z-index: 50;
+    pointer-events: none;
+  }
+  #pause-menu.open { display: flex; pointer-events: auto; }
+  .pause-panel {
+    width: min(320px, 80vw);
+    background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
+    border: 3px solid rgba(136, 192, 255, 0.6);
+    border-radius: 16px;
+    box-shadow: 0 16px 50px rgba(0, 0, 0, 0.8);
+    padding: 28px 24px;
+    text-align: center;
+    animation: pauseIn 0.25s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  @keyframes pauseIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .pause-title {
+    font-size: 28px; font-weight: 900;
+    color: #88c0ff; letter-spacing: 2px;
+    margin-bottom: 6px;
+    text-shadow: 0 0 20px rgba(136, 192, 255, 0.4);
+  }
+  .pause-subtitle { font-size: 11px; color: #5a6a8a; margin-bottom: 20px; }
+  .pause-btn {
+    display: block; width: 100%;
+    padding: 12px 16px; margin-bottom: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 2px solid rgba(136, 192, 255, 0.3);
+    color: #c8d8ff; border-radius: 10px;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.08s;
+  }
+  .pause-btn:hover {
+    background: rgba(136, 192, 255, 0.15);
+    border-color: rgba(136, 192, 255, 0.6);
+    transform: translateY(-1px);
+  }
+  .pause-btn:active { transform: translateY(0) scale(0.98); }
+  .pause-btn.primary {
+    background: linear-gradient(180deg, rgba(136, 192, 255, 0.3), rgba(100, 150, 220, 0.3));
+    border-color: rgba(136, 192, 255, 0.7);
+    color: #fff;
+  }
+  .pause-hint { font-size: 10px; color: #4a5a7a; margin-top: 14px; }
+
   /* ===== Dynamic Map Zone Display ===== */
   .zone-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
   .zone-card {
@@ -680,6 +731,18 @@
   </div>
 
   <div id="toasts"></div>
+
+  <!-- ===== Pause Menu Overlay (Esc key) ===== -->
+  <div id="pause-menu">
+    <div class="pause-panel">
+      <div class="pause-title">⏸ PAUSED</div>
+      <div class="pause-subtitle">Gameplay dibekukan</div>
+      <button class="pause-btn primary" id="pause-resume">▶ RESUME</button>
+      <button class="pause-btn" id="pause-settings">⚙ SETTINGS</button>
+      <button class="pause-btn" id="pause-quit">✕ QUIT</button>
+      <div class="pause-hint">Tekan <kbd>Esc</kbd> untuk resume</div>
+    </div>
+  </div>
 
   <!-- Popup Notification Queue (top-right, FIFO with max 3) -->
   <div id="popup-container"></div>
@@ -892,6 +955,7 @@ let dialogQueue = [];
 let dialogActive = false;
 let menuOpen = null; // 'shop' | 'inventory' | null
 let isMenuOpen = false;   // Bag/Menu overlay (Tab key) — freezes player movement
+let isPaused = false;     // Pause System: freezes ALL gameplay (Time.timeScale = 0 equiv)
 let activeTab = 'status'; // 'status' | 'bag' | 'map'
 const INV_SLOTS = 12;
 
@@ -1224,11 +1288,21 @@ window.addEventListener('keydown', (e) => {
     }
     return;
   }
-  // Esc closes menu (priority over dialog/shop)
-  if (e.key === 'Escape' && isMenuOpen) {
-    isMenuOpen = false;
-    document.getElementById('ui-menu').classList.remove('open');
-    toast('✅ Menu ditutup');
+  // Esc — Pause toggle (top priority). If Bag open, close it first.
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    if (isMenuOpen) {
+      isMenuOpen = false;
+      document.getElementById('ui-menu').classList.remove('open');
+      toast('✅ Menu ditutup');
+      return;
+    }
+    if (menuOpen) { closeMenu(); return; }
+    if (dialogActive) { closeDialog(); return; }
+    // Toggle pause
+    isPaused = !isPaused;
+    document.getElementById('pause-menu').classList.toggle('open', isPaused);
+    toast(isPaused ? '⏸ Game dijeda' : '▶ Game dilanjutkan', 'info');
     return;
   }
   // Tab switch (1/2/3) only when menu open
@@ -3214,16 +3288,19 @@ function loop(now) {
   const dt = Math.min(0.05, (now - lastFrame) / 1000);
   lastFrame = now;
   if (gameStarted) {
-    updatePlayer(dt);
-    updateNearbyAction();
-    updateTime(dt);
-    updateParticles(dt);
-    spawnNightFireflies();
-    updateFireflies(dt);
-    checkWorldPickups();   // Check dropped items pickup (Euclidean distance)
-    updateCurrentZone();   // Runtime Find: detect zone via Array.find()
-    updateCamera();   // Smooth lerp + confiner clamp (BEFORE render)
-    render();
+    // ===== Pause System: bypass ALL updates when paused (freeze frame) =====
+    if (!isPaused) {
+      updatePlayer(dt);
+      updateNearbyAction();
+      updateTime(dt);
+      updateParticles(dt);
+      spawnNightFireflies();
+      updateFireflies(dt);
+      checkWorldPickups();
+      updateCurrentZone();
+      updateCamera();
+    }
+    render();   // Always render — frozen frame stays visible
     updateHUD();
     // Debug: expose game state for testing (5-layer + camera verification)
     window.__gameDebug = {
@@ -3265,6 +3342,19 @@ document.getElementById('ui-close').addEventListener('click', () => {
   isMenuOpen = false;
   document.getElementById('ui-menu').classList.remove('open');
   toast('✅ Menu ditutup');
+});
+
+// ===== Pause Menu Button Handlers =====
+document.getElementById('pause-resume').addEventListener('click', () => {
+  isPaused = false;
+  document.getElementById('pause-menu').classList.remove('open');
+  toast('▶ Game dilanjutkan', 'info');
+});
+document.getElementById('pause-settings').addEventListener('click', () => {
+  toast('⚙ Settings — belum tersedia di versi ini', 'warn');
+});
+document.getElementById('pause-quit').addEventListener('click', () => {
+  toast('✕ Quit — refresh halaman untuk restart', 'warn');
 });
 
 // ===== Status Tab Renderer =====
