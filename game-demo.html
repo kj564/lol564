@@ -442,7 +442,7 @@ const CAMERA_CONFIG = { dampening: 0.08 };
 
 // Player
 const PLAYER = {
-  x: 240, y: 240,
+  x: 144, y: 144,
   speed: 4,
   radius: 16,
   dir: 'down',
@@ -1452,13 +1452,12 @@ function drawChests() {
     if (chestImg && chestImg.complete && chestImg.naturalWidth) {
       const sw = chestImg.naturalWidth;   // 32
       const sh = chestImg.naturalHeight;   // 14
-      // Scale to fit tile: target ~36px wide (centered in 48px tile)
-      const targetW = 36;
-      const scale = targetW / sw;
-      const dw = sw * scale;
-      const dh = sh * scale;
-      const dx = sx + (TILE - dw) / 2;
-      const dy = sy + TILE - dh - 6;  // anchor near bottom of tile
+      // Scale to fill tile — stretch to 48px wide × 32px tall (2/3 tile height)
+      // Sprite is 32×14 (very wide/short). Non-uniform scale to fill tile better.
+      const dw = TILE;           // full tile width (48px)
+      const dh = TILE * 0.67;    // 2/3 tile height (32px) — fills bottom portion
+      const dx = sx;             // left-aligned to tile
+      const dy = sy + TILE - dh; // anchored to bottom of tile
       ctx.drawImage(chestImg, 0, 0, sw, sh, dx, dy, dw, dh);
 
       // If opened, overlay a "faded" version to indicate opened state
