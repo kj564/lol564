@@ -429,6 +429,35 @@ const T = {
   POND_EDGE: 15,
 };
 
+// ===== 5-LAYER TILEMAP ARCHITECTURE =====
+// Render depth (bottom → top):
+//   Layer 1 (Ground):      base terrain — grass, sand, water, floor, shop_floor, path
+//   Layer 2 (WalkInFront): overlays under player feet — tilled, watered, flower
+//   Layer 3 (Collision):   solid walls — wall, shop_wall, fence, bush, tree-trunk
+//   Layer 3.5 (Player):    dynamic entities (player + NPCs, Y-sorted)
+//   Layer 4 (WalkBehind):  canopy / roof overhangs — covers player from above
+//   Layer 5 (Decor):       top-most — fireflies, floating sparkles, particles
+//
+// map[][] remains the source of truth for ground/walkInFront/collision tiles.
+// canopyMap[][] holds Layer 4 overlays (tree canopies, roof pieces).
+// decorMap[][] holds Layer 5 overlays (night fireflies, sparkles).
+
+// Canopy tile types (Layer 4 — WalkBehind)
+const C = {
+  NONE: 0,
+  TREE_CANOPY: 1,    // bushy tree leaves (drawn above trunk, player walks under)
+  TREE_TOP: 2,       // topmost crown of the tree
+  ROOF_HOUSE: 3,     // house roof overhang (player walks behind building)
+  ROOF_SHOP: 4,      // shop roof overhang
+};
+
+// Decor tile types (Layer 5 — top-most)
+const D = {
+  NONE: 0,
+  FIREFLY: 1,    // nighttime floating light
+  SPARKLE: 2,    // generic sparkle
+};
+
 // Tools
 const TOOLS = [
   { id: 'hoe',    name: 'Cangkul',   icon: '⛏️', key: '1' },
@@ -479,8 +508,10 @@ const TOOL_ASSETS = {
   axe: 'UI/axe.png',
 };
 
-let map = [];          // 2D array of tile type
+let map = [];          // 2D array of tile type (Layer 1/2/3 source)
 let cropMap = [];      // 2D array of crop objects or null
+let canopyMap = [];    // 2D array of canopy tile (Layer 4 - WalkBehind)
+let decorMap = [];     // 2D array of decor tile (Layer 5 - top-most)
 let player = {
   x: 20 * TILE, y: 22 * TILE,
   dir: 'down',
@@ -518,8 +549,10 @@ let gameStarted = false;
 function generateMap() {
   map = [];
   cropMap = [];
+  canopyMap = [];
+  decorMap = [];
   for (let y = 0; y < MAP_H; y++) {
-    const row = [], cRow = [];
+    const row = [], cRow = [], canRow = [], decRow = [];
     for (let x = 0; x < MAP_W; x++) {
       let t = T.GRASS;
       // Random grass variation
@@ -528,9 +561,13 @@ function generateMap() {
       if (Math.random() < 0.06) t = T.BUSH;
       row.push(t);
       cRow.push(null);
+      canRow.push(C.NONE);
+      decRow.push(D.NONE);
     }
     map.push(row);
     cropMap.push(cRow);
+    canopyMap.push(canRow);
+    decorMap.push(decRow);
   }
 
   // Border trees
@@ -624,6 +661,42 @@ function generateMap() {
     if (map[y] && map[y][x] !== T.WATER) map[y][x] = T.TREE;
   }
 
+  // ===== Layer 4 (WalkBehind): Tree canopies + building roof overhangs =====
+  // For each tree at (x, y), add canopy leaves at the tiles ABOVE the trunk.
+  // Player walking onto a canopy tile is covered by Layer 4 (rendered above player).
+  function addTreeCanopy(tx, ty) {
+    // Crown extends 2 tiles upward from trunk
+    if (ty - 1 >= 0) canopyMap[ty - 1][tx] = C.TREE_CANOPY;
+    if (ty - 2 >= 0) canopyMap[ty - 2][tx] = C.TREE_TOP;
+  }
+  // Scan map for all tree tiles and grow their canopies
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      if (map[y][x] === T.TREE) addTreeCanopy(x, y);
+    }
+  }
+
+  // Building roof overhangs: roof extends 1 tile ABOVE the top wall.
+  // Player walking above the building is covered by the roof (walk-behind).
+  // House roof
+  for (let x = houseX; x < houseX + houseW; x++) {
+    if (houseY - 1 >= 0) canopyMap[houseY - 1][x] = C.ROOF_HOUSE;
+  }
+  // Shop roof
+  for (let x = shopX; x < shopX + shopW; x++) {
+    if (shopY - 1 >= 0) canopyMap[shopY - 1][x] = C.ROOF_SHOP;
+  }
+
+  // ===== Layer 5 (Decor): sparkles near flowers (top-most) =====
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      if (map[y][x] === T.FLOWER && Math.random() < 0.3) {
+        decorMap[y][x] = D.SPARKLE;
+      }
+    }
+  }
+  // Nighttime fireflies are spawned dynamically in updateDecor() based on time of day
+
   // NPCs - now use Ninja Adventure complete character sprites (16x16 frames in 4x4 grid)
   // Sprite names map to: assets/ninja-adventure/Characters/<Name>_walk.png
   npcs = [
@@ -644,10 +717,13 @@ function generateMap() {
 }
 
 // ---------- Save / Load ----------
+const SAVE_VERSION = 2;  // bump when schema changes (v2 = 5-layer architecture)
 function save() {
   try {
     const data = {
-      map, cropMap, player, day, season, seasonDay, timeOfDay,
+      v: SAVE_VERSION,
+      map, cropMap, canopyMap, decorMap,
+      player, day, season, seasonDay, timeOfDay,
       selectedTool, selectedSeed, npcs: npcs.map(n => ({id:n.id,x:n.x,y:n.y,dir:n.dir})),
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -660,6 +736,15 @@ function load() {
     const d = JSON.parse(raw);
     if (!d || !d.map) return false;
     map = d.map; cropMap = d.cropMap;
+    // v2 saves include canopyMap & decorMap; v1 saves regenerate them from map
+    if (d.canopyMap && d.decorMap) {
+      canopyMap = d.canopyMap;
+      decorMap = d.decorMap;
+    } else {
+      // Migration: rebuild canopy/decor from existing map (trees + buildings)
+      rebuildCanopyFromMap();
+      rebuildDecorFromMap();
+    }
     player = Object.assign(player, d.player);
     day = d.day; season = d.season || 'spring'; seasonDay = d.seasonDay || 1;
     timeOfDay = d.timeOfDay || 6*60;
@@ -673,6 +758,46 @@ function load() {
     }
     return true;
   } catch(e) { return false; }
+}
+
+// Rebuild canopyMap from existing map (for migrating v1 saves → v2 architecture)
+function rebuildCanopyFromMap() {
+  canopyMap = [];
+  for (let y = 0; y < MAP_H; y++) {
+    const row = [];
+    for (let x = 0; x < MAP_W; x++) row.push(C.NONE);
+    canopyMap.push(row);
+  }
+  // Tree canopies (2 tiles above each trunk)
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      if (map[y][x] === T.TREE) {
+        if (y - 1 >= 0) canopyMap[y - 1][x] = C.TREE_CANOPY;
+        if (y - 2 >= 0) canopyMap[y - 2][x] = C.TREE_TOP;
+      }
+    }
+  }
+  // Building roof overhangs (1 tile above top wall)
+  const houseX = 4, houseY = 22, houseW = 7;
+  for (let x = houseX; x < houseX + houseW; x++) {
+    if (houseY - 1 >= 0) canopyMap[houseY - 1][x] = C.ROOF_HOUSE;
+  }
+  const shopX = 30, shopY = 4, shopW = 7;
+  for (let x = shopX; x < shopX + shopW; x++) {
+    if (shopY - 1 >= 0) canopyMap[shopY - 1][x] = C.ROOF_SHOP;
+  }
+}
+
+// Rebuild decorMap (sparkles near flowers)
+function rebuildDecorFromMap() {
+  decorMap = [];
+  for (let y = 0; y < MAP_H; y++) {
+    const row = [];
+    for (let x = 0; x < MAP_W; x++) {
+      row.push(map[y][x] === T.FLOWER && Math.random() < 0.3 ? D.SPARKLE : D.NONE);
+    }
+    decorMap.push(row);
+  }
 }
 
 // ---------- Input ----------
@@ -1659,6 +1784,194 @@ function drawSleepFade() {
   }
 }
 
+// ===== 5-LAYER RENDER PIPELINE =====
+// Classify a map tile into its render layer (1=Ground, 2=WalkInFront, 3=Collision).
+// Used by render() to draw tiles in correct depth order across 3 sub-passes.
+function tileRenderLayer(tileId) {
+  switch (tileId) {
+    // Layer 1 (Ground): base terrain — grass, sand, water, floor, path, tilled, watered
+    case T.GRASS: case T.GRASS2: case T.SAND: case T.WATER:
+    case T.FLOOR: case T.SHOP_FLOOR: case T.PATH:
+    case T.TILLED: case T.WATERED:
+      return 1;
+    // Layer 2 (WalkInFront): decorative overlays under player feet
+    case T.FLOWER:
+      return 2;
+    // Layer 3 (Collision): solid blocking tiles — walls, fences, trees, bushes
+    case T.WALL: case T.SHOP_WALL: case T.FENCE: case T.BUSH: case T.TREE:
+    case T.POND_EDGE:
+      return 3;
+    default:
+      return 1;
+  }
+}
+
+// ===== Layer 4: WalkBehind (canopy / roof overhangs) =====
+// Renders AFTER player so canopy covers the player when they walk under.
+function drawCanopyTile(canopyId, x, y) {
+  const px = x * TILE - camera.x;
+  const py = y * TILE - camera.y;
+  if (px < -TILE || py < -TILE || px > canvas.clientWidth + TILE || py > canvas.clientHeight + TILE) return;
+  const t = performance.now() / 1000;
+
+  switch (canopyId) {
+    case C.TREE_CANOPY: {
+      // Bushy tree leaves — dense foliage covering the tile
+      // Uses the Sunnyside tree sprite's leafy portion if available
+      const treeStrip = getAsset('Elements/Plants/spr_deco_tree_01_strip4.png');
+      if (treeStrip && treeStrip.complete && treeStrip.naturalWidth) {
+        const fw = treeStrip.naturalWidth / 4;
+        const fh = treeStrip.naturalHeight;
+        const fi = Math.floor(t * 3) % 4;
+        // Draw the leafy crown (top 60% of the sprite) at this canopy tile
+        ctx.drawImage(treeStrip, fi * fw, 0, fw, fh * 0.6, px - 4, py - 4, TILE + 8, TILE * 0.7);
+      } else {
+        // Procedural fallback: bushy green circles
+        ctx.fillStyle = '#1a4a0a';
+        ctx.beginPath(); ctx.arc(px + 16, py + 16, 18, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#2a6a1a';
+        ctx.beginPath(); ctx.arc(px + 10, py + 14, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(px + 22, py + 18, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#3a8a2a';
+        ctx.beginPath(); ctx.arc(px + 14, py + 12, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(px + 20, py + 16, 6, 0, Math.PI * 2); ctx.fill();
+      }
+      break;
+    }
+    case C.TREE_TOP: {
+      // Smaller crown at the very top of the tree
+      const treeStrip = getAsset('Elements/Plants/spr_deco_tree_01_strip4.png');
+      if (treeStrip && treeStrip.complete && treeStrip.naturalWidth) {
+        const fw = treeStrip.naturalWidth / 4;
+        const fh = treeStrip.naturalHeight;
+        const fi = Math.floor(t * 3) % 4;
+        ctx.drawImage(treeStrip, fi * fw, 0, fw, fh * 0.35, px, py + 4, TILE, TILE * 0.4);
+      } else {
+        ctx.fillStyle = '#2a6a1a';
+        ctx.beginPath(); ctx.arc(px + 16, py + 14, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#3a8a2a';
+        ctx.beginPath(); ctx.arc(px + 12, py + 12, 5, 0, Math.PI * 2); ctx.fill();
+      }
+      break;
+    }
+    case C.ROOF_HOUSE: {
+      // Red-brown peaked roof overhang (player walks behind house)
+      ctx.fillStyle = '#8a3a2a';
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.fillStyle = '#6a2a1a';
+      ctx.fillRect(px, py, TILE, 6);                    // top edge shadow
+      ctx.fillStyle = '#a04a3a';
+      for (let i = 0; i < 4; i++) {
+        ctx.fillRect(px + i * 8 + 1, py + 6, 6, TILE - 8); // roof shingles
+      }
+      ctx.fillStyle = '#5a1a0a';
+      ctx.fillRect(px, py + TILE - 3, TILE, 3);        // bottom edge
+      break;
+    }
+    case C.ROOF_SHOP: {
+      // Blue-teal shop roof overhang
+      ctx.fillStyle = '#3a5a8a';
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.fillStyle = '#2a4a7a';
+      ctx.fillRect(px, py, TILE, 6);
+      ctx.fillStyle = '#4a6a9a';
+      for (let i = 0; i < 4; i++) {
+        ctx.fillRect(px + i * 8 + 1, py + 6, 6, TILE - 8);
+      }
+      ctx.fillStyle = '#1a3a6a';
+      ctx.fillRect(px, py + TILE - 3, TILE, 3);
+      break;
+    }
+  }
+}
+
+// ===== Layer 5: Decor (top-most — fireflies, sparkles) =====
+// Renders LAST, above everything including canopy and player.
+let nightFireflies = [];  // dynamically spawned firefly particles
+function spawnNightFireflies() {
+  const h = timeOfDay / 60;
+  const isNight = (h < 6 || h >= 19);
+  // Target count: more fireflies at night, none during day
+  const target = isNight ? 18 : 0;
+  // Spawn near the player's vicinity
+  while (nightFireflies.length < target) {
+    nightFireflies.push({
+      x: player.x + (Math.random() - 0.5) * 600,
+      y: player.y + (Math.random() - 0.5) * 400,
+      phase: Math.random() * Math.PI * 2,
+      speed: 0.3 + Math.random() * 0.5,
+      brightness: 0.5 + Math.random() * 0.5,
+    });
+  }
+  // Despawn excess (when day comes, they fade out)
+  if (nightFireflies.length > target) {
+    nightFireflies = nightFireflies.slice(0, target);
+  }
+}
+
+function updateFireflies(dt) {
+  const t = performance.now() / 1000;
+  for (const f of nightFireflies) {
+    // Gentle wandering motion
+    f.x += Math.cos(t * f.speed + f.phase) * 0.4;
+    f.y += Math.sin(t * f.speed * 1.3 + f.phase) * 0.3;
+    // Flicker brightness
+    f.brightness = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(t * 3 + f.phase));
+  }
+}
+
+function drawDecorTile(decorId, x, y) {
+  const px = x * TILE - camera.x;
+  const py = y * TILE - camera.y;
+  if (px < -TILE || py < -TILE || px > canvas.clientWidth + TILE || py > canvas.clientHeight + TILE) return;
+  const t = performance.now() / 1000;
+
+  switch (decorId) {
+    case D.SPARKLE: {
+      // Twinkling 4-pointed star above flowers
+      const flicker = 0.5 + 0.5 * Math.sin(t * 4 + x * 3 + y * 7);
+      ctx.globalAlpha = flicker;
+      ctx.fillStyle = '#fff5a0';
+      const cx = px + 16, cy = py + 10;
+      // 4-pointed star
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 5);
+      ctx.lineTo(cx + 2, cy - 2);
+      ctx.lineTo(cx + 5, cy);
+      ctx.lineTo(cx + 2, cy + 2);
+      ctx.lineTo(cx, cy + 5);
+      ctx.lineTo(cx - 2, cy + 2);
+      ctx.lineTo(cx - 5, cy);
+      ctx.lineTo(cx - 2, cy - 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      break;
+    }
+  }
+}
+
+function drawFireflies() {
+  for (const f of nightFireflies) {
+    const sx = f.x - camera.x;
+    const sy = f.y - camera.y;
+    if (sx < -20 || sx > canvas.clientWidth + 20 || sy < -20 || sy > canvas.clientHeight + 20) continue;
+    // Glow halo
+    const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, 8);
+    grad.addColorStop(0, `rgba(255, 240, 120, ${f.brightness * 0.6})`);
+    grad.addColorStop(1, 'rgba(255, 240, 120, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 8, 0, Math.PI * 2);
+    ctx.fill();
+    // Core dot
+    ctx.fillStyle = `rgba(255, 255, 200, ${f.brightness})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 function render() {
   const vw = canvas.clientWidth, vh = canvas.clientHeight;
   ctx.fillStyle = '#2d4a2d';
@@ -1677,19 +1990,31 @@ function render() {
   const startY = Math.max(0, Math.floor(camera.y / TILE));
   const endY = Math.min(MAP_H - 1, Math.ceil((camera.y + vh) / TILE));
 
-  // Tiles
+  // ===== PASS 1: Layer 1 (Ground) — base terrain =====
   for (let y = startY; y <= endY; y++) {
     for (let x = startX; x <= endX; x++) {
-      drawTile(map[y][x], x, y);
+      if (tileRenderLayer(map[y][x]) === 1) drawTile(map[y][x], x, y);
     }
   }
-  // Crops
+  // ===== PASS 2: Layer 2 (WalkInFront) — paths, flowers, crops =====
+  for (let y = startY; y <= endY; y++) {
+    for (let x = startX; x <= endX; x++) {
+      if (tileRenderLayer(map[y][x]) === 2) drawTile(map[y][x], x, y);
+    }
+  }
+  // Crops render in Layer 2 (on top of ground, below player)
   for (let y = startY; y <= endY; y++) {
     for (let x = startX; x <= endX; x++) {
       if (cropMap[y][x]) drawCrop(cropMap[y][x], x, y);
     }
   }
-  // NPCs (sorted by Y for depth)
+  // ===== PASS 3: Layer 3 (Collision) — walls, trees, fences =====
+  for (let y = startY; y <= endY; y++) {
+    for (let x = startX; x <= endX; x++) {
+      if (tileRenderLayer(map[y][x]) === 3) drawTile(map[y][x], x, y);
+    }
+  }
+  // ===== PASS 3.5: Layer 3.5 (Player + NPCs) — Y-sorted dynamic entities =====
   const drawables = [];
   for (const n of npcs) drawables.push({ y: n.y + TILE/2, kind: 'npc', ref: n });
   drawables.push({ y: player.y, kind: 'player' });
@@ -1698,15 +2023,27 @@ function render() {
     if (d.kind === 'npc') drawNPC(d.ref);
     else drawPlayer();
   }
-  // Tool cursor
+  // ===== PASS 4: Layer 4 (WalkBehind) — tree canopies, roof overhangs =====
+  // Renders ABOVE player — canopy covers player when they walk under.
+  for (let y = startY; y <= endY; y++) {
+    for (let x = startX; x <= endX; x++) {
+      if (canopyMap[y][x]) drawCanopyTile(canopyMap[y][x], x, y);
+    }
+  }
+  // ===== PASS 5: Layer 5 (Decor) — sparkles, fireflies (top-most) =====
+  for (let y = startY; y <= endY; y++) {
+    for (let x = startX; x <= endX; x++) {
+      if (decorMap[y][x]) drawDecorTile(decorMap[y][x], x, y);
+    }
+  }
+  // Dynamic fireflies (spawned at night, float freely — not tile-locked)
+  drawFireflies();
+
+  // ===== UI overlays (above all game layers) =====
   drawToolCursor();
-  // Particles
   drawParticles();
-  // Action hint
   drawActionHint();
-  // Sky overlay (night)
   drawSkyOverlay();
-  // Sleep fade
   drawSleepFade();
 }
 
@@ -1732,8 +2069,18 @@ function loop(now) {
     updateNearbyAction();
     updateTime(dt);
     updateParticles(dt);
+    spawnNightFireflies();
+    updateFireflies(dt);
     render();
     updateHUD();
+    // Debug: expose game state for testing (5-layer verification)
+    window.__gameDebug = {
+      playerTile: { x: Math.floor((player.x) / TILE), y: Math.floor((player.y) / TILE) },
+      playerPx: { x: Math.round(player.x), y: Math.round(player.y) },
+      canopyAtPlayer: canopyMap[Math.floor(player.y / TILE)]?.[Math.floor(player.x / TILE)] || 0,
+      mapAtPlayer: map[Math.floor(player.y / TILE)]?.[Math.floor(player.x / TILE)] || 0,
+      timeOfDay: Math.floor(timeOfDay / 60) + ':' + String(Math.floor(timeOfDay % 60)).padStart(2, '0'),
+    };
   }
   requestAnimationFrame(loop);
 }
