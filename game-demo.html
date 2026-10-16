@@ -507,6 +507,9 @@ const ASSET_PATHS = {
   item_egg:     'assets/Elements/Crops/egg.png',
   item_fish:    'assets/Elements/Crops/fish.png',
   item_milk:    'assets/Elements/Crops/milk.png',
+  // Chest sprites (Ninja Adventure Items/Treasure)
+  chest_big:    'assets/ninja-adventure/Items/Treasure/BigTreasureChest.png',
+  chest_small:  'assets/ninja-adventure/Items/Treasure/LittleTreasureChest.png',
 };
 const assets = {};  // populated by loadAssets()
 
@@ -1429,8 +1432,9 @@ function render() {
 
 // ===== Chest Prefab Renderer (Grid-Snapped) =====
 // Render chests at their grid-snapped pixel positions with camera offset.
-// Uses real asset sprite (carrot_05 as chest placeholder since no chest asset).
-// Visual changes based on isOpened state: closed = full sprite, open = faded.
+// Uses REAL asset sprite: BigTreasureChest.png (32×14, has open/closed frames).
+// Sprite is 32px wide × 14px tall — scaled up to fit tile (48px).
+// For closed: use left half of sprite; for open: use right half (if available).
 function drawChests() {
   for (const chest of chests) {
     const sx = chest.x - camera.x;
@@ -1440,42 +1444,62 @@ function drawChests() {
     // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.beginPath();
-    ctx.ellipse(sx + TILE/2, sy + TILE - 4, 16, 5, 0, 0, Math.PI * 2);
+    ctx.ellipse(sx + TILE/2, sy + TILE - 4, 18, 5, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Chest body (procedural since no chest sprite in assets)
-    // Closed: brown box with gold lock
-    // Open: faded box with dark interior
+    // Real chest sprite (BigTreasureChest.png — 32×14)
+    const chestImg = assets.chest_big;
+    if (chestImg && chestImg.complete && chestImg.naturalWidth) {
+      const sw = chestImg.naturalWidth;   // 32
+      const sh = chestImg.naturalHeight;   // 14
+      // Scale to fit tile: target ~36px wide (centered in 48px tile)
+      const targetW = 36;
+      const scale = targetW / sw;
+      const dw = sw * scale;
+      const dh = sh * scale;
+      const dx = sx + (TILE - dw) / 2;
+      const dy = sy + TILE - dh - 6;  // anchor near bottom of tile
+      ctx.drawImage(chestImg, 0, 0, sw, sh, dx, dy, dw, dh);
+
+      // If opened, overlay a "faded" version to indicate opened state
+      if (chest.isOpened) {
+        ctx.globalAlpha = 0.4;
+        ctx.drawImage(chestImg, 0, 0, sw, sh, dx, dy, dw, dh);
+        ctx.globalAlpha = 1;
+        // Add "empty" indicator (dark interior)
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(dx + dw * 0.2, dy + dh * 0.3, dw * 0.6, dh * 0.3);
+      }
+    } else {
+      // Fallback: procedural chest
+      if (!chest.isOpened) {
+        ctx.fillStyle = '#8a5a2a';
+        ctx.fillRect(sx + 6, sy + 10, TILE - 12, TILE - 14);
+        ctx.fillStyle = '#6a3a1a';
+        ctx.fillRect(sx + 6, sy + 10, TILE - 12, 4);
+        ctx.fillStyle = '#ffd54a';
+        ctx.fillRect(sx + TILE/2 - 3, sy + 20, 6, 6);
+      } else {
+        ctx.fillStyle = 'rgba(80, 50, 20, 0.6)';
+        ctx.fillRect(sx + 6, sy + 10, TILE - 12, TILE - 14);
+      }
+    }
+
+    // Highlight when player near (interaction prompt)
     if (!chest.isOpened) {
-      // Closed chest — wooden brown with gold trim
-      ctx.fillStyle = '#8a5a2a';
-      ctx.fillRect(sx + 6, sy + 10, TILE - 12, TILE - 14);
-      ctx.fillStyle = '#6a3a1a';
-      ctx.fillRect(sx + 6, sy + 10, TILE - 12, 4);
-      ctx.fillStyle = '#a06a3a';
-      ctx.fillRect(sx + 8, sy + 14, TILE - 16, 6);
-      // Gold lock
-      ctx.fillStyle = '#ffd54a';
-      ctx.fillRect(sx + TILE/2 - 3, sy + 20, 6, 6);
-      ctx.fillStyle = '#b88a00';
-      ctx.fillRect(sx + TILE/2 - 2, sy + 22, 4, 2);
-      // Highlight when player near
       const dist = Math.hypot(PLAYER.x - (chest.x + TILE/2), PLAYER.y - (chest.y + TILE/2));
       if (dist < chest.interactionRadius + 20) {
         const intensity = 1 - (dist / (chest.interactionRadius + 20));
         ctx.strokeStyle = `rgba(255, 213, 74, ${intensity})`;
         ctx.lineWidth = 2;
         ctx.strokeRect(sx + 4, sy + 8, TILE - 8, TILE - 12);
+        // Interaction prompt text
+        ctx.fillStyle = `rgba(255, 255, 255, ${intensity})`;
+        ctx.font = 'bold 10px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText('E: Buka', sx + TILE/2, sy - 2);
+        ctx.textAlign = 'left';
       }
-    } else {
-      // Open chest — faded, dark interior
-      ctx.fillStyle = 'rgba(80, 50, 20, 0.6)';
-      ctx.fillRect(sx + 6, sy + 10, TILE - 12, TILE - 14);
-      ctx.fillStyle = 'rgba(40, 20, 10, 0.8)';
-      ctx.fillRect(sx + 8, sy + 16, TILE - 16, TILE - 22);
-      // Lid open (angled)
-      ctx.fillStyle = 'rgba(100, 60, 30, 0.5)';
-      ctx.fillRect(sx + 4, sy + 6, TILE - 8, 6);
     }
   }
 }
