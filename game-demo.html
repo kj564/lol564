@@ -541,13 +541,28 @@ const camera = { x: 0, y: 0, targetX: 0, targetY: 0 };
 let isMenuOpen = false;
 let isPaused = false;   // Pause System: freezes all gameplay updates (Time.timeScale = 0 equiv)
 
-// ===== SFX System: Centralized Audio Manager (Web Audio API) =====
-// Synthesizes sound effects via OscillatorNode + GainNode — NO external files.
+// ===== SFX System: Centralized Audio Manager (Real Audio Files + Web Audio API) =====
+// Uses REAL audio files from /assets/ninja-adventure/Audio/ (188 files available).
+// Falls back to Web Audio API synthesis if file not found.
 // Audio is "unscaled" — plays even when game is paused (independent of game loop).
+const SFX_PATHS = {
+  footstep:  'assets/ninja-adventure/Audio/Sounds/Jump & Bounce/Bounce.wav',
+  pickup:    'assets/ninja-adventure/Audio/Sounds/Bonus/Bonus.wav',
+  interact:  'assets/ninja-adventure/Audio/Sounds/Menu/Accept.wav',
+  ui:        'assets/ninja-adventure/Audio/Sounds/Menu/Select.wav',
+  drop:      'assets/ninja-adventure/Audio/Sounds/Hit & Impact/Hit1.wav',
+  zone:      'assets/ninja-adventure/Audio/Jingles/LevelUp1.wav',
+  chest:     'assets/ninja-adventure/Audio/Sounds/Bonus/Bonus2.wav',
+  sign:      'assets/ninja-adventure/Audio/Sounds/Menu/Accept2.wav',
+  bgm:       'assets/ninja-adventure/Audio/Musics/1 - Adventure Begin.ogg',
+};
+
 const AudioManager = {
-  ctx: null,         // AudioContext (lazy-init on first user gesture)
-  masterGain: null,   // master volume control
-  lastFootstep: 0,    // throttle footstep SFX (min interval ms)
+  ctx: null,
+  masterGain: null,
+  lastFootstep: 0,
+  audioCache: {},    // cache HTMLAudioElement per SFX key
+  bgmAudio: null,    // background music element
 
   // Initialize AudioContext (must be triggered by user gesture — browser policy)
   init() {
@@ -555,89 +570,124 @@ const AudioManager = {
     try {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
       this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.value = 0.3;  // master volume (0-1)
+      this.masterGain.gain.value = 0.4;
       this.masterGain.connect(this.ctx.destination);
     } catch (e) {
       console.warn('Web Audio API not supported:', e);
     }
   },
 
-  // Resume context if suspended (browser auto-suspend policy)
   resume() {
     if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
   },
 
-  // Core: play a synthesized tone with envelope
-  // type: 'sine'|'square'|'triangle'|'sawtooth'
-  // freq: base frequency in Hz
-  // duration: seconds
-  // volume: 0-1
-  // pitchVar: random pitch variation multiplier (e.g. 0.1 = ±10%)
+  // Play a real audio file via HTMLAudioElement (with Web Audio API gain control)
+  playFile(path, volume = 0.4, pitchVar = 0) {
+    if (!this.ctx) return;
+    this.resume();
+    // Cache audio element
+    if (!this.audioCache[path]) {
+      const audio = new Audio(path);
+      audio.preload = 'auto';
+      this.audioCache[path] = audio;
+    }
+    const audio = this.audioCache[path];
+    // Clone for overlapping playback (can't replay same element while playing)
+    const clone = audio.cloneNode(true);
+    clone.volume = volume;
+    // Random pitch variation via playbackRate (if pitchVar > 0)
+    if (pitchVar > 0) {
+      clone.playbackRate = 1 + (Math.random() - 0.5) * 2 * pitchVar;
+    }
+    // Connect through masterGain for volume control
+    try {
+      const source = this.ctx.createMediaElementSource(clone);
+      source.connect(this.masterGain);
+    } catch (e) {
+      // Fallback: just play without gain node (may already be connected)
+    }
+    clone.play().catch(() => {});  // silent fail if blocked
+  },
+
+  // Fallback: synthesized tone (if audio file fails)
   playTone(type, freq, duration, volume = 0.3, pitchVar = 0) {
     if (!this.ctx) return;
     this.resume();
     const now = this.ctx.currentTime;
-    // Random pitch variation: freq * (1 ± pitchVar)
     const actualFreq = freq * (1 + (Math.random() - 0.5) * 2 * pitchVar);
-
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
     osc.type = type;
     osc.frequency.setValueAtTime(actualFreq, now);
-    // Frequency sweep (optional — adds character)
-    osc.frequency.exponentialRampToValueAtTime(actualFreq * 0.8, now + duration);
-
-    // Envelope: quick attack, exponential decay (mimics percussive SFX)
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(volume, now + 0.005);  // 5ms attack
-    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);  // decay to silence
-
+    gain.gain.linearRampToValueAtTime(volume, now + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
     osc.connect(gain);
     gain.connect(this.masterGain);
     osc.start(now);
     osc.stop(now + duration);
   },
 
-  // ===== SFX Library =====
+  // ===== SFX Library (real audio files + synth fallback) =====
 
-  // Footstep: low triangle wave, short, with random pitch (0.9-1.1x)
+  // Footstep: real Bounce.wav with random pitch variation
   playFootstep() {
     const now = performance.now();
     if (now - this.lastFootstep < 250) return;  // throttle: max 4 steps/sec
     this.lastFootstep = now;
-    this.playTone('triangle', 120, 0.08, 0.15, 0.1);  // 120Hz, 80ms, ±10% pitch
+    this.playFile(SFX_PATHS.footstep, 0.3, 0.1);  // ±10% pitch
   },
 
-  // Pickup: ascending sine sweep (coin/item collect feel)
+  // Pickup: real Bonus.wav
   playPickup() {
-    if (!this.ctx) return;
-    this.resume();
-    const now = this.ctx.currentTime;
-    // Two-tone chime: high-low ascending
-    this.playTone('sine', 660, 0.1, 0.25, 0.05);
-    setTimeout(() => this.playTone('sine', 880, 0.12, 0.2, 0.05), 80);
+    this.playFile(SFX_PATHS.pickup, 0.4);
   },
 
-  // Interact: soft click + low hum (chest open / signboard read)
+  // Interact: real Accept.wav (chest open / signboard read)
   playInteract() {
-    this.playTone('square', 220, 0.06, 0.12, 0.05);
-    setTimeout(() => this.playTone('triangle', 330, 0.1, 0.15, 0.03), 50);
+    this.playFile(SFX_PATHS.interact, 0.4);
   },
 
-  // UI click: crisp short blip (button press, menu toggle)
+  // UI click: real Select.wav
   playUI() {
-    this.playTone('sine', 800, 0.04, 0.15, 0.02);
+    this.playFile(SFX_PATHS.ui, 0.3);
   },
 
-  // Drop: low thud (item hitting ground)
+  // Drop: real Hit1.wav
   playDrop() {
-    this.playTone('sawtooth', 80, 0.12, 0.2, 0.05);
+    this.playFile(SFX_PATHS.drop, 0.35);
   },
 
-  // Zone transition: pleasant two-note (entering new area)
+  // Zone transition: real LevelUp1.wav jingle
   playZone() {
-    this.playTone('sine', 523, 0.15, 0.2, 0.02);  // C5
-    setTimeout(() => this.playTone('sine', 659, 0.15, 0.18, 0.02), 120);  // E5
+    this.playFile(SFX_PATHS.zone, 0.35);
+  },
+
+  // Chest open: real Bonus2.wav
+  playChest() {
+    this.playFile(SFX_PATHS.chest, 0.4);
+  },
+
+  // Signboard: real Accept2.wav
+  playSign() {
+    this.playFile(SFX_PATHS.sign, 0.35);
+  },
+
+  // Background music: loop real .ogg music file
+  playBGM() {
+    if (this.bgmAudio) return;  // already playing
+    this.init();
+    this.bgmAudio = new Audio(SFX_PATHS.bgm);
+    this.bgmAudio.loop = true;
+    this.bgmAudio.volume = 0.15;  // low volume for BGM
+    this.bgmAudio.play().catch(() => {});  // silent fail if blocked
+  },
+
+  stopBGM() {
+    if (this.bgmAudio) {
+      this.bgmAudio.pause();
+      this.bgmAudio = null;
+    }
   },
 };
 let activeTab = 'status';
@@ -867,6 +917,7 @@ for (const def of chestDefs) {
     interact() {
       if (this.isOpened) { toast('Peti sudah dibuka', 'warn'); return; }
       this.isOpened = true;
+      AudioManager.playChest();   // SFX: chest open sound
       const db = ItemDatabase[this.rewardId];
       // Add reward to inventory (stacking + first empty)
       for (let i = 0; i < this.rewardQty; i++) {
@@ -908,6 +959,7 @@ for (const def of signboardDefs) {
     interact() {
       // Show dialog text via toast (simulated dialog box)
       toast(`📜 ${this.text}`, 'info');
+      AudioManager.playSign();   // SFX: signboard read sound
       showPickupPopup({ id: 'egg', x: this.x, y: this.y }, 0, 'sign');
     },
   };
@@ -1972,6 +2024,7 @@ function loop(now) {
   loadingEl.classList.add('hidden');
   setTimeout(() => { loadingEl.style.display = 'none'; }, 500);
   toast('🎮 Ready! Walk over items to auto-pickup. Press Tab for Bag, 1-5 for hotbar, R to respawn.');
+  AudioManager.playBGM();   // Start background music (real .ogg file)
   requestAnimationFrame(loop);
 })();
 </script>
