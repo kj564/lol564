@@ -624,17 +624,18 @@ function generateMap() {
     if (map[y] && map[y][x] !== T.WATER) map[y][x] = T.TREE;
   }
 
-  // NPCs
+  // NPCs - now use Ninja Adventure complete character sprites (16x16 frames in 4x4 grid)
+  // Sprite names map to: assets/ninja-adventure/Characters/<Name>_walk.png
   npcs = [
     { id: 'maya', name: 'Maya', x: 18 * TILE, y: 6 * TILE, color: '#e36a8a', hair: '#3a2030', dir: 'down',
-      sprite: 'curlyhair',  // uses Characters/Human/WALKING/curlyhair_walk_strip8.png
+      sprite: 'Princess',  // female character with complete body sprite
       dialog: [
         'Halo petani baru! Selamat datang di Harvest Vale.',
         'Aku Maya. Kalau butuh benih, datangi toko di utara.',
         'Tanaman butuh air setiap hari supaya tumbuh. Jangan lupa siram ya!'
       ]},
     { id: 'tom', name: 'Pak Tom', x: 28 * TILE, y: 18 * TILE, color: '#5a8a4a', hair: '#888070', dir: 'down',
-      sprite: 'bowlhair',  // uses Characters/Human/WALKING/bowlhair_walk_strip8.png
+      sprite: 'OldMan',  // older male character with complete body sprite
       dialog: [
         'Hmm... musim ini tanahnya cukup subur.',
         'Jangan lupa istirahat. Tidur di rumah biar energi pulih.'
@@ -1467,49 +1468,90 @@ function drawPlayer() {
   const py = player.y - camera.y - TILE/2 + 4; // slight offset
   // Pass movement state separately from the walk-cycle index: walkFrame can be 0
   // during movement, which previously switched the sprite back to idle for one frame.
-  drawCharacter(px, py, player.dir, '#4a8aff', 'sprite:base', player.moving ? 1 : 0);
+  // Player uses Ninja Adventure 'Boy' sprite (complete character, 16x16 frames in 4x4 grid)
+  drawCharacter(px, py, player.dir, '#4a8aff', 'sprite:Boy', player.moving ? 1 : 0);
 }
+
+// ---------- Ninja Adventure character sprite system ----------
+// Ninja Adventure Walk.png format: 64x64 grid = 4 rows x 4 cols of 16x16 frames
+//   Row 0: standing pose (4 directions: down, up, left, right)
+//   Row 1: right foot forward (4 directions)
+//   Row 2: left foot forward (4 directions)
+//   Row 3: standing pose (4 directions, same as row 0)
+// Ninja Adventure Idle.png format: 64x16 = 1 row x 4 cols of 16x16 frames (4 directions)
+const CHAR_NINJA_TILE = 16;  // native sprite frame size
+const DIR_COL = { down: 0, up: 1, left: 2, right: 3 };  // direction -> sprite column
+// Walk cycle: stand -> right foot -> stand -> left foot (alternating)
+const WALK_CYCLE = [0, 1, 0, 2];
+
+// Map sprite name -> asset path under /assets/
+const CHAR_SPRITES = {
+  Boy:      'ninja-adventure/Characters/Boy_walk.png',
+  Princess: 'ninja-adventure/Characters/Princess_walk.png',
+  OldMan:   'ninja-adventure/Characters/OldMan_walk.png',
+};
+const CHAR_IDLE_SPRITES = {
+  Boy:      'ninja-adventure/Characters/Boy_idle.png',
+  Princess: 'ninja-adventure/Characters/Princess_idle.png',
+  OldMan:   'ninja-adventure/Characters/OldMan_idle.png',
+};
 
 function drawCharacter(px, py, dir, shirt, hair, frame, name) {
   const walking = frame !== 0;
-  // Resolve sprite hairstyle: hair param can be 'sprite:<name>' to use that hairstyle
-  // e.g. 'sprite:curlyhair' -> Characters/Human/WALKING/curlyhair_walk_strip8.png
-  let spriteName = 'base';
+  // Resolve sprite name from 'sprite:<Name>' convention (default: Boy)
+  let spriteName = 'Boy';
   if (typeof hair === 'string' && hair.startsWith('sprite:')) {
     spriteName = hair.slice(7);
   }
-  const sprite = getAsset(walking
-    ? 'Characters/Human/WALKING/' + spriteName + '_walk_strip8.png'
-    : 'Characters/Human/IDLE/' + spriteName + '_idle_strip9.png');
-  if (sprite) {
-    const count = walking ? 8 : 9;
-    const fw = sprite.naturalWidth / count;
-    const fh = sprite.naturalHeight;
-    const fi = walking ? (Math.floor(performance.now() / 115) % count) : (Math.floor(performance.now() / 500) % count);
-    const dw = 32, dh = 32;
-    ctx.fillStyle = 'rgba(0,0,0,0.22)';
-    ctx.beginPath();
-    ctx.ellipse(px + 16, py + 29, 10, 3, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.save();
-    if (dir === 'left') {
-      ctx.translate(px + dw, py);
-      ctx.scale(-1, 1);
-      ctx.drawImage(sprite, fi * fw, 0, fw, fh, 0, 0, dw, dh);
-    } else {
-      ctx.drawImage(sprite, fi * fw, 0, fw, fh, px, py, dw, dh);
+
+  // Try Ninja Adventure complete character sprite first
+  const walkPath = CHAR_SPRITES[spriteName];
+  const idlePath = CHAR_IDLE_SPRITES[spriteName];
+  const walkSprite = walkPath ? getAsset(walkPath) : null;
+  const idleSprite = idlePath ? getAsset(idlePath) : null;
+
+  if (walkSprite && walkSprite.complete && walkSprite.naturalWidth) {
+    // Pick the right sprite: idle sprite for non-walking, walk sprite for walking
+    const useIdle = !walking && idleSprite && idleSprite.complete && idleSprite.naturalWidth;
+    const sprite = useIdle ? idleSprite : walkSprite;
+
+    // Column: direction (down=0, up=1, left=2, right=3)
+    const col = DIR_COL[dir] ?? 0;
+    // Row: walk cycle (only row 0 for idle; cycle 0,1,0,2 for walk)
+    let row = 0;
+    if (walking && !useIdle) {
+      const idx = Math.floor(performance.now() / 160) % WALK_CYCLE.length;
+      row = WALK_CYCLE[idx];
     }
-    ctx.restore();
+
+    const sx = col * CHAR_NINJA_TILE;
+    const sy = row * CHAR_NINJA_TILE;
+
+    // Shadow ellipse at feet
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath();
+    ctx.ellipse(px + 16, py + 28, 10, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw character (32x32 on screen = 2x scale of 16x16 native)
+    // No flipping needed - sprite has all 4 directions built-in
+    ctx.drawImage(sprite, sx, sy, CHAR_NINJA_TILE, CHAR_NINJA_TILE, px, py, 32, 32);
+
+    // Name label above character
     if (name) {
       ctx.font = 'bold 10px system-ui';
       ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(px + 1, py - 12, ctx.measureText(name).width + 8, 13);
-      ctx.fillStyle = '#fff';
-      ctx.fillText(name, px + 16, py - 3);
+      const tw = ctx.measureText(name).width;
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
+      ctx.fillRect(px + 16 - tw/2 - 4, py - 14, tw + 8, 13);
+      ctx.fillStyle = '#ffe04a';
+      ctx.fillText(name, px + 16, py - 4);
+      ctx.textAlign = 'left';
     }
     return;
   }
+
+  // ===== Fallback: procedural character drawing (when sprite not loaded) =====
 
   // shadow
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
