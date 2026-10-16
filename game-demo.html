@@ -1098,10 +1098,12 @@ function dropItem(slotIndex) {
 
   // ===== Realtime Object Instantiation =====
   // Create new world entity via plain JS object literal (Instantiate equivalent)
+  // Offset Y = +55px so item lands OUTSIDE pickup radius (player.radius 16
+  // + item.pickupRadius 22 = 38px threshold). +55 > 38 = safe from instant re-pickup.
   const droppedItem = {
     id: item.id,
     x: PLAYER.x,                    // player's current X
-    y: PLAYER.y + 25,               // +25px offset below player (feet area)
+    y: PLAYER.y + 55,               // +55px below player (beyond pickup radius)
     pickupRadius: 22,
     bobOffset: Math.random() * 6.28,  // random phase for bob animation
   };
