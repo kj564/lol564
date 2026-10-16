@@ -1084,6 +1084,46 @@ function renderHotbarUI() {
   }
 }
 
+// ===== Drop Item System (Right-Click → Instantiate to world) =====
+// Simulates Unity's Instantiate(prefab) by pushing a new plain JS object
+// to itemsInWorld[]. Item spawns at player position with Y offset (+25px)
+// so it appears dropped just below the player's feet (not stacked on player).
+function dropItem(slotIndex) {
+  const item = inventoryData[slotIndex];
+  if (!item) {
+    toast('Slot kosong — tidak ada item untuk di-drop', 'warn');
+    return;
+  }
+  const db = ItemDatabase[item.id];
+
+  // ===== Realtime Object Instantiation =====
+  // Create new world entity via plain JS object literal (Instantiate equivalent)
+  const droppedItem = {
+    id: item.id,
+    x: PLAYER.x,                    // player's current X
+    y: PLAYER.y + 25,               // +25px offset below player (feet area)
+    pickupRadius: 22,
+    bobOffset: Math.random() * 6.28,  // random phase for bob animation
+  };
+  itemsInWorld.push(droppedItem);
+
+  // ===== Array Nullification =====
+  // Decrement quantity or clear slot entirely
+  if (item.quantity > 1) {
+    item.quantity--;
+  } else {
+    inventoryData[slotIndex] = null;   // clear slot
+  }
+
+  // ===== Visual Re-Sync =====
+  // Trigger UI redraw so empty/updated slot reflects instantly
+  renderInventory();   // re-renders Bag grid + calls renderHotbarUI()
+
+  // Toast + popup feedback
+  toast(`🗑️ Dropped: ${db.name}`, 'info');
+  showPopup(item.id, db.name, 'pickup', '−1');
+}
+
 // ===== Inventory UI (drag-drop) =====
 function renderInventory() {
   const grid = document.getElementById('inventoryGrid');
@@ -1127,6 +1167,11 @@ function renderInventory() {
 
       itemEl.addEventListener('dragstart', handleDragStart);
       itemEl.addEventListener('dragend', handleDragEnd);
+      // Right-click → Drop item (Context Menu Hijacking)
+      itemEl.addEventListener('contextmenu', (e) => {
+        e.preventDefault();   // block browser context menu
+        dropItem(i);
+      });
 
       if (item.quantity > 1) {
         const count = document.createElement('div');
