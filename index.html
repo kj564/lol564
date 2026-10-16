@@ -452,6 +452,33 @@ const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
+// ---------- Harvest Vale asset integration ----------
+// Relative URLs keep assets working on GitHub Pages under /lol564/.
+const assetCache = Object.create(null);
+function getAsset(path) {
+  if (!assetCache[path]) {
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = 'assets/' + path;
+    assetCache[path] = img;
+  }
+  const img = assetCache[path];
+  return img.complete && img.naturalWidth > 0 ? img : null;
+}
+const CROP_ASSETS = {
+  parsnip: 'Elements/Crops/parsnip',
+  potato: 'Elements/Crops/potato',
+  tomato: null, // no tomato sprite exists in the installed pack; retain the original fallback drawing.
+  corn: 'Elements/Crops/wheat',
+};
+const TOOL_ASSETS = {
+  hoe: 'UI/pickaxe.png',
+  seeds: 'UI/basket.png',
+  water: 'UI/water.png',
+  sickle: null,
+  axe: 'UI/axe.png',
+};
+
 let map = [];          // 2D array of tile type
 let cropMap = [];      // 2D array of crop objects or null
 let player = {
@@ -733,6 +760,21 @@ function renderToolbar() {
       <div class="tool-icon">${tool.icon}</div>
       ${count ? `<div class="tool-count">${count}</div>` : ''}
     `;
+    const toolAsset = TOOL_ASSETS[tool.id] ? getAsset(TOOL_ASSETS[tool.id]) : null;
+    if (TOOL_ASSETS[tool.id]) {
+      // Image loads asynchronously; next toolbar refresh will use the real icon.
+      const iconPath = TOOL_ASSETS[tool.id];
+      const icon = new Image();
+      icon.alt = tool.name;
+      icon.width = 22;
+      icon.height = 22;
+      icon.style.objectFit = 'contain';
+      icon.src = 'assets/' + iconPath;
+      icon.onload = () => {
+        const target = slot.querySelector('.tool-icon');
+        if (target) { target.textContent = ''; target.appendChild(icon); }
+      };
+    }
     slot.addEventListener('click', () => {
       selectTool(tool.id);
       if (tool.id === 'seeds') {
@@ -1295,23 +1337,30 @@ function drawTile(tile, x, y) {
       ctx.fillRect(px + 4, py + 8, 4, 12);
       ctx.fillRect(px + 24, py + 8, 4, 12);
       break;
-    case T.TREE:
-      // grass base
+    case T.TREE: {
+      // Draw the installed Sunnyside tree animation when loaded; keep a safe fallback.
       ctx.fillStyle = '#3a6a2a';
       ctx.fillRect(px, py, TILE, TILE);
-      // trunk
-      ctx.fillStyle = '#5a3a1a';
-      ctx.fillRect(px + 12, py + 18, 8, 14);
-      // leaves (circles approximated with rects)
-      ctx.fillStyle = '#2a5a1a';
-      ctx.fillRect(px + 2, py + 0, TILE - 4, 22);
-      ctx.fillStyle = '#3a7a2a';
-      ctx.fillRect(px + 4, py + 2, 10, 12);
-      ctx.fillRect(px + 18, py + 4, 10, 12);
-      ctx.fillStyle = '#4a8a3a';
-      ctx.fillRect(px + 8, py + 4, 6, 6);
-      ctx.fillRect(px + 22, py + 8, 6, 6);
+      const treeStrip = getAsset('Elements/Plants/spr_deco_tree_01_strip4.png');
+      if (treeStrip) {
+        const fw = treeStrip.naturalWidth / 4;
+        const fh = treeStrip.naturalHeight;
+        const fi = Math.floor(performance.now() / 360) % 4;
+        ctx.drawImage(treeStrip, fi * fw, 0, fw, fh, px - 8, py - 14, TILE + 16, TILE + 18);
+      } else {
+        ctx.fillStyle = '#5a3a1a';
+        ctx.fillRect(px + 12, py + 18, 8, 14);
+        ctx.fillStyle = '#2a5a1a';
+        ctx.fillRect(px + 2, py, TILE - 4, 22);
+        ctx.fillStyle = '#3a7a2a';
+        ctx.fillRect(px + 4, py + 2, 10, 12);
+        ctx.fillRect(px + 18, py + 4, 10, 12);
+        ctx.fillStyle = '#4a8a3a';
+        ctx.fillRect(px + 8, py + 4, 6, 6);
+        ctx.fillRect(px + 22, py + 8, 6, 6);
+      }
       break;
+    }
     case T.BUSH:
       ctx.fillStyle = '#3a6a2a';
       ctx.fillRect(px, py, TILE, TILE);
@@ -1344,22 +1393,38 @@ function drawCrop(crop, x, y) {
   const px = x * TILE - camera.x;
   const py = y * TILE - camera.y;
   const c = CROPS[crop.type];
+  const cropBase = CROP_ASSETS[crop.type];
+  // Sunnyside supplies individual PNGs for six growth stages.
+  if (cropBase) {
+    const stageIndex = [0, 2, 4, 5][Math.min(3, Math.max(0, crop.stage | 0))];
+    const sprite = getAsset(cropBase + '_' + String(stageIndex).padStart(2, '0') + '.png');
+    if (sprite) {
+      const size = crop.stage >= 3 ? 30 : 25;
+      ctx.drawImage(sprite, px + (TILE - size) / 2, py + TILE - size - 1, size, size);
+      if (crop.stage >= 3) {
+        ctx.fillStyle = '#fff4a3';
+        ctx.fillRect(px + TILE - 9, py + 3, 2, 2);
+        ctx.fillRect(px + TILE - 6, py + 6, 2, 2);
+        ctx.fillRect(px + TILE - 11, py + 7, 2, 2);
+      }
+      return;
+    }
+  }
+
+  // Original canvas-rendered crop remains as a fallback for types without matching sprites.
   const cx = px + TILE/2;
   const baseY = py + TILE - 4;
   if (crop.stage === 0) {
-    // seed
     ctx.fillStyle = '#3a2a14';
     ctx.fillRect(cx - 3, baseY - 4, 6, 4);
     ctx.fillStyle = c.color;
     ctx.fillRect(cx - 2, baseY - 5, 4, 2);
   } else if (crop.stage === 1) {
-    // sprout
     ctx.fillStyle = c.stem;
     ctx.fillRect(cx - 1, baseY - 8, 2, 8);
     ctx.fillRect(cx - 4, baseY - 8, 3, 3);
     ctx.fillRect(cx + 1, baseY - 8, 3, 3);
   } else if (crop.stage === 2) {
-    // mid
     ctx.fillStyle = c.stem;
     ctx.fillRect(cx - 1, baseY - 14, 2, 14);
     ctx.fillRect(cx - 6, baseY - 12, 4, 4);
@@ -1367,28 +1432,20 @@ function drawCrop(crop, x, y) {
     ctx.fillRect(cx - 4, baseY - 16, 3, 3);
     ctx.fillRect(cx + 1, baseY - 18, 3, 3);
   } else {
-    // mature
     ctx.fillStyle = c.stem;
     ctx.fillRect(cx - 1, baseY - 18, 2, 18);
     ctx.fillRect(cx - 6, baseY - 14, 4, 6);
     ctx.fillRect(cx + 2, baseY - 16, 4, 6);
-    // fruit
     ctx.fillStyle = c.color;
     ctx.fillRect(cx - 5, baseY - 22, 5, 5);
     ctx.fillRect(cx + 1, baseY - 24, 5, 5);
     ctx.fillRect(cx - 2, baseY - 26, 5, 5);
-    // sparkle indicator
     ctx.fillStyle = '#fff';
     ctx.fillRect(px + TILE - 8, py + 2, 2, 2);
     ctx.fillRect(px + TILE - 6, py + 4, 2, 2);
     ctx.fillRect(px + TILE - 10, py + 4, 2, 2);
   }
-  if (!crop.wateredToday && crop.stage < 3) {
-    // wilt indicator (faded)
-    ctx.fillStyle = 'rgba(200, 100, 60, 0.0)';
-  }
 }
-
 function drawNPC(n) {
   const px = n.x - camera.x;
   const py = n.y - camera.y;
@@ -1402,6 +1459,40 @@ function drawPlayer() {
 }
 
 function drawCharacter(px, py, dir, shirt, hair, frame, name) {
+  const walking = frame !== 0;
+  const sprite = getAsset(walking
+    ? 'Characters/Human/WALKING/base_walk_strip8.png'
+    : 'Characters/Human/IDLE/base_idle_strip9.png');
+  if (sprite) {
+    const count = walking ? 8 : 9;
+    const fw = sprite.naturalWidth / count;
+    const fh = sprite.naturalHeight;
+    const fi = walking ? (Math.floor(performance.now() / 115) % count) : (Math.floor(performance.now() / 500) % count);
+    const dw = 32, dh = 32;
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.beginPath();
+    ctx.ellipse(px + 16, py + 29, 10, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.save();
+    if (dir === 'left') {
+      ctx.translate(px + dw, py);
+      ctx.scale(-1, 1);
+      ctx.drawImage(sprite, fi * fw, 0, fw, fh, 0, 0, dw, dh);
+    } else {
+      ctx.drawImage(sprite, fi * fw, 0, fw, fh, px, py, dw, dh);
+    }
+    ctx.restore();
+    if (name) {
+      ctx.font = 'bold 10px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(px + 1, py - 12, ctx.measureText(name).width + 8, 13);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(name, px + 16, py - 3);
+    }
+    return;
+  }
+
   // shadow
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.fillRect(px + 8, py + 26, 16, 4);
@@ -1448,6 +1539,7 @@ function drawCharacter(px, py, dir, shirt, hair, frame, name) {
     ctx.textAlign = 'left';
   }
 }
+
 
 function drawParticles() {
   for (const p of particles) {
