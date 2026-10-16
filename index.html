@@ -937,6 +937,7 @@ const INV_ASSET_PATHS = {
   player_face:   'ninja-adventure/Characters/Boy_faceset.png',
   // Chest sprites (LittleTreasureChest has 2 frames: closed + open)
   chest_small:   'ninja-adventure/Items/Treasure/LittleTreasureChest.png',
+  signboard:     'ninja-adventure/Items/Object/Book.png',
 };
 const invAssets = {};  // loaded async at init
 let toastList = [];
@@ -1445,7 +1446,7 @@ function selectFromHotbar(slotIndex) {
 // - Null → toast "slot kosong"
 function useHotbarItem() {
   // Check chest interaction first (Spasi/E near chest → open)
-  if (checkChestInteraction()) return;
+  if (tryInteract()) return;
   const item = inventoryData[activeHotbarIndex];
   if (!item) {
     toast('Slot hotbar kosong — tidak ada item untuk dipakai', 'warn');
@@ -1715,23 +1716,92 @@ function drawWorldItems() {
   }
 }
 
-// ===== Chest Prefab System (Grid-Snapped) =====
-// LittleTreasureChest.png: 32×16, 2 frames (closed x=1-14, open x=17-30)
-const chests = [
-  { gridCol: 16, gridRow: 5,  rewardId: 'potion',  rewardQty: 3, isOpened: false },
-  { gridCol: 18, gridRow: 25, rewardId: 'parsnip', rewardQty: 5, isOpened: false },
-  { gridCol: 33, gridRow: 20, rewardId: 'potato',  rewardQty: 3, isOpened: false },
-];
-chests.forEach(c => {
-  c.x = c.gridCol * TILE;   // Grid Snapping: X = gridCol * TILE_SIZE
-  c.y = c.gridRow * TILE;
-  c.interactionRadius = 48;
-});
+// ===== IInteractable Interface Simulation (Polymorphism via Duck-Typing) =====
+// Each interactable object has a .interact() method.
+// Engine calls closestObject.interact() without knowing the type.
+// Chest → opens + gives loot. Signboard → shows dialog text.
 
-function drawChests() {
-  for (const chest of chests) {
-    const sx = chest.x - camera.x;
-    const sy = chest.y - camera.y;
+const chestDefs = [
+  { gridCol: 16, gridRow: 5,  rewardId: 'potion',  rewardQty: 3 },
+  { gridCol: 18, gridRow: 25, rewardId: 'parsnip', rewardQty: 5 },
+  { gridCol: 33, gridRow: 20, rewardId: 'potato',  rewardQty: 3 },
+];
+
+const signboardDefs = [
+  { gridCol: 7,  gridRow: 20, text: 'Selamat datang di rumahmu! Tekan T untuk tidur.' },
+  { gridCol: 20, gridRow: 3,  text: 'Toko Benih — Beli benih, jual hasil panen untuk gold!' },
+  { gridCol: 14, gridRow: 12, text: 'Area Bertani — Cangkul tanah, tanam benih, siram tiap hari.' },
+  { gridCol: 3,  gridRow: 3,  text: 'Kolam — Isi ulang penyiram air di sini saat habis.' },
+];
+
+const interactableObjects = [];
+
+// Create chest instances with .interact()
+for (const def of chestDefs) {
+  const obj = {
+    type: 'chest',
+    gridCol: def.gridCol, gridRow: def.gridRow,
+    x: def.gridCol * TILE, y: def.gridRow * TILE,
+    interactionRadius: 48,
+    isOpened: false,
+    rewardId: def.rewardId, rewardQty: def.rewardQty,
+    interact() {
+      if (this.isOpened) { toast('Peti sudah dibuka', 'warn'); return; }
+      this.isOpened = true;
+      const db = CROPS[this.rewardId];
+      const name = db ? db.name : this.rewardId;
+      for (let i = 0; i < this.rewardQty; i++) {
+        if (this.rewardId === 'potion') {
+          let stacked = false;
+          for (let j = 0; j < INV_SLOTS; j++) {
+            if (inventoryData[j] && inventoryData[j].id === this.rewardId && inventoryData[j].quantity < 99) {
+              inventoryData[j].quantity++; stacked = true; break;
+            }
+          }
+          if (!stacked) {
+            for (let j = 0; j < INV_SLOTS; j++) {
+              if (!inventoryData[j]) {
+                inventoryData[j] = { id: this.rewardId, quantity: 1, name: 'Potion', assetKey: 'food_milk', type: 'consumable' };
+                break;
+              }
+            }
+          }
+        } else {
+          player.inventory[this.rewardId] = (player.inventory[this.rewardId] || 0) + 1;
+        }
+      }
+      syncInvQuantities(); renderToolbar();
+      if (isMenuOpen && activeTab === 'bag') renderInventory();
+      showPopup(this.rewardId, name, 'pickup', `+${this.rewardQty}`);
+      toast(`📦 Peti dibuka! Dapat: ${name} ×${this.rewardQty}`, 'info');
+    },
+  };
+  interactableObjects.push(obj);
+}
+
+// Create signboard instances with .interact()
+for (const def of signboardDefs) {
+  const obj = {
+    type: 'signboard',
+    gridCol: def.gridCol, gridRow: def.gridRow,
+    x: def.gridCol * TILE, y: def.gridRow * TILE,
+    interactionRadius: 48,
+    text: def.text,
+    interact() {
+      toast(`📜 ${this.text}`, 'info');
+    },
+  };
+  interactableObjects.push(obj);
+}
+
+// Keep chests[] reference for backward compat
+const chests = interactableObjects.filter(o => o.type === 'chest');
+
+// ===== Interactable Renderer (Chests + Signboards + [E] Indicator) =====
+function drawInteractables() {
+  for (const obj of interactableObjects) {
+    const sx = obj.x - camera.x;
+    const sy = obj.y - camera.y;
     if (sx < -TILE || sy < -TILE || sx > canvas.clientWidth + TILE || sy > canvas.clientHeight + TILE) continue;
 
     // Shadow
@@ -1740,89 +1810,80 @@ function drawChests() {
     ctx.ellipse(sx + TILE/2, sy + TILE - 4, 18, 5, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Real chest sprite — LittleTreasureChest.png (32×16, 2 frames)
-    const chestImg = invAssets.chest_small;
-    if (chestImg && chestImg.complete && chestImg.naturalWidth) {
-      const frameW = 14, frameH = 16;
-      const sx_src = chest.isOpened ? 17 : 1;
-      // Uniform scale by height (preserve aspect ratio, no squish)
-      const dh = TILE;              // full tile height (32px)
-      const dw = TILE * (frameW / frameH);  // 32 * (14/16) = 28px
-      const dx = sx + (TILE - dw) / 2;     // center horizontally
-      const dy = sy;                         // top of tile
-      ctx.drawImage(chestImg, sx_src, 0, frameW, frameH, dx, dy, dw, dh);
-    } else {
-      // Fallback: procedural
-      if (!chest.isOpened) {
+    // Render based on type
+    if (obj.type === 'chest') {
+      const chestImg = invAssets.chest_small;
+      if (chestImg && chestImg.complete && chestImg.naturalWidth) {
+        const frameW = 14, frameH = 16;
+        const sx_src = obj.isOpened ? 17 : 1;
+        const dh = TILE;
+        const dw = TILE * (frameW / frameH);
+        const dx = sx + (TILE - dw) / 2;
+        const dy = sy;
+        ctx.drawImage(chestImg, sx_src, 0, frameW, frameH, dx, dy, dw, dh);
+      } else {
         ctx.fillStyle = '#8a5a2a';
         ctx.fillRect(sx + 4, sy + 6, TILE - 8, TILE - 10);
-        ctx.fillStyle = '#ffd54a';
-        ctx.fillRect(sx + TILE/2 - 2, sy + 14, 4, 4);
+      }
+    } else if (obj.type === 'signboard') {
+      const signImg = invAssets.signboard;
+      if (signImg && signImg.complete && signImg.naturalWidth) {
+        const sw = signImg.naturalWidth, sh = signImg.naturalHeight;
+        const scale = TILE / Math.max(sw, sh);
+        const dw = sw * scale, dh = sh * scale;
+        const dx = sx + (TILE - dw) / 2;
+        const dy = sy + (TILE - dh) / 2;
+        ctx.drawImage(signImg, 0, 0, sw, sh, dx, dy, dw, dh);
       } else {
-        ctx.fillStyle = 'rgba(80,50,20,0.5)';
-        ctx.fillRect(sx + 4, sy + 6, TILE - 8, TILE - 10);
+        // Fallback: brown post with sign
+        ctx.fillStyle = '#5a3a1a';
+        ctx.fillRect(sx + TILE/2 - 3, sy + 20, 6, 12);
+        ctx.fillStyle = '#8a6a3a';
+        ctx.fillRect(sx + 6, sy + 8, TILE - 12, 14);
       }
     }
 
-    // Highlight + interaction prompt when player near
-    if (!chest.isOpened) {
-      const dist = Math.hypot(player.x - (chest.x + TILE/2), player.y - (chest.y + TILE/2));
-      if (dist < chest.interactionRadius + 20) {
-        const intensity = 1 - (dist / (chest.interactionRadius + 20));
-        ctx.strokeStyle = `rgba(255, 213, 74, ${intensity})`;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(sx + 2, sy + 2, TILE - 4, TILE - 4);
-        ctx.fillStyle = `rgba(255, 255, 255, ${intensity})`;
-        ctx.font = 'bold 10px system-ui';
-        ctx.textAlign = 'center';
-        ctx.fillText('E: Buka', sx + TILE/2, sy - 4);
-        ctx.textAlign = 'left';
-      }
+    // Floating [E] indicator when player within interactionRadius
+    const dist = Math.hypot(player.x - (obj.x + TILE/2), player.y - (obj.y + TILE/2));
+    if (dist < obj.interactionRadius && !(obj.type === 'chest' && obj.isOpened)) {
+      const intensity = 1 - (dist / obj.interactionRadius);
+      // Highlight border
+      ctx.strokeStyle = `rgba(255, 213, 74, ${0.6 + 0.4 * intensity})`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(sx + 2, sy + 2, TILE - 4, TILE - 4);
+      // Floating [E] bubble
+      const bobY = Math.sin(performance.now() / 300) * 3;
+      const ex = sx + TILE / 2;
+      const ey = sy - 14 + bobY;
+      ctx.fillStyle = `rgba(255, 213, 74, ${0.8 + 0.2 * intensity})`;
+      ctx.beginPath();
+      ctx.arc(ex, ey, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(255, 255, 255, ${intensity})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = '#2a1500';
+      ctx.font = 'bold 12px system-ui';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('E', ex, ey);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
     }
   }
 }
 
-// Check chest interaction (called from useHotbarItem when Spasi/E pressed)
-function checkChestInteraction() {
-  for (const chest of chests) {
-    if (chest.isOpened) continue;
-    const dist = Math.hypot(player.x - (chest.x + TILE/2), player.y - (chest.y + TILE/2));
-    if (dist < chest.interactionRadius) {
-      chest.isOpened = true;
-      const db = CROPS[chest.rewardId];
-      const name = db ? db.name : chest.rewardId;
-      // Add reward to inventory
-      for (let i = 0; i < chest.rewardQty; i++) {
-        if (chest.rewardId === 'potion') {
-          // Potion = milk item, special handling
-          let stacked = false;
-          for (let j = 0; j < INV_SLOTS; j++) {
-            if (inventoryData[j] && inventoryData[j].id === chest.rewardId && inventoryData[j].quantity < 99) {
-              inventoryData[j].quantity++;
-              stacked = true; break;
-            }
-          }
-          if (!stacked) {
-            for (let j = 0; j < INV_SLOTS; j++) {
-              if (!inventoryData[j]) {
-                inventoryData[j] = { id: chest.rewardId, quantity: 1, name: 'Potion', assetKey: 'food_milk', type: 'consumable' };
-                break;
-              }
-            }
-          }
-        } else {
-          // Crop reward
-          player.inventory[chest.rewardId] = (player.inventory[chest.rewardId] || 0) + 1;
-        }
-      }
-      syncInvQuantities();
-      renderToolbar();
-      if (isMenuOpen && activeTab === 'bag') renderInventory();
-      showPopup(chest.rewardId, name, 'pickup', `+${chest.rewardQty}`);
-      toast(`📦 Peti dibuka! Dapat: ${name} ×${chest.rewardQty}`, 'info');
-      return true;
+// ===== Interaction: Find Nearest + Execute .interact() =====
+function tryInteract() {
+  let closest = null, closestDist = Infinity;
+  for (const obj of interactableObjects) {
+    if (obj.type === 'chest' && obj.isOpened) continue;
+    const dist = Math.hypot(player.x - (obj.x + TILE/2), player.y - (obj.y + TILE/2));
+    if (dist < obj.interactionRadius && dist < closestDist) {
+      closest = obj; closestDist = dist;
     }
   }
+  if (closest) { closest.interact(); return true; }
   return false;
 }
 // ---------- Toasts ----------
@@ -3089,7 +3150,7 @@ function render() {
   }
   // World items (dropped items on ground) — render above crops, below player
   drawWorldItems();
-  drawChests();                // Chest prefabs (grid-snapped)
+  drawInteractables();            // Interactable objects (chests + signboards)
   // ===== PASS 3: Layer 3 (Collision) — walls, trees, fences =====
   for (let y = startY; y <= endY; y++) {
     for (let x = startX; x <= endX; x++) {
