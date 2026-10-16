@@ -158,8 +158,8 @@ const CAMERA_CONFIG = {
 
 // ---------- Player Stats ----------
 const PLAYER = {
-  x: 480,           // start center of map (960/2)
-  y: 480,
+  x: 120,           // start in open grass area (top-left, away from fortress)
+  y: 120,
   speed: 4,          // pixels per frame at 60fps
   radius: 16,        // collision circle radius
   color: '#ff5722',
@@ -212,21 +212,19 @@ for (let y = 0; y < ROWS; y++) {
   Layer_Collision.push(row);
 }
 // Build a stone fortress ring in center (rows 7-12, cols 7-12)
-// with gaps for entry on each side
+// with WIDE gaps for entry on each side (player radius = 16, tile = 48, gap = 2 tiles safe)
 for (let y = 7; y <= 12; y++) {
   for (let x = 7; x <= 12; x++) {
     // Outer ring only (perimeter)
     if (y === 7 || y === 12 || x === 7 || x === 12) {
-      // Leave gaps at middle of each side
-      if ((y === 7 || y === 12) && x === 10) continue;  // gap top/bottom
-      if ((x === 7 || x === 12) && y === 10) continue;  // gap left/right
+      // Leave 2-tile-wide gaps at middle of each side for easy entry
+      if ((y === 7 || y === 12) && (x === 9 || x === 10)) continue;  // gap top/bottom
+      if ((x === 7 || x === 12) && (y === 9 || y === 10)) continue;  // gap left/right
       Layer_Collision[y][x] = 3;
     }
   }
 }
-// Add a couple of internal pillars
-Layer_Collision[9][9] = 3;
-Layer_Collision[9][11] = 3;
+// No internal pillars — keep fortress interior open for safe exploration
 
 // Layer 4: WALK_BEHIND — canopy tiles (player walks behind these)
 const Layer_WalkBehind = [];
