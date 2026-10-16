@@ -17,7 +17,7 @@ Asset pack utama dari **Daniel Diggle**.
 assets/
 ├── Characters/Human/    # Sprite karakter (walk/idle/run/dig/water/axe, 8-9 frame strips)
 ├── Elements/
-│   ├── Crops/           # 11 tanaman × 6 tahap tumbuh
+│   ├── Crops/           # 11 tanaman × 6 tahap tumbuh + soil/seed tiles
 │   ├── Plants/          # Pohon, jamur dekorasi
 │   ├── Animals/
 │   └── VFX/
@@ -28,24 +28,46 @@ assets/
 
 ## 2. 🥷 Ninja Adventure (`/assets/ninja-adventure/`)
 
-Subset dari **Ninja Adventure** pack by Pixel-boy (CC0).
+**FULL pack** dari Ninja Adventure by Pixel-boy (CC0).
 
 - **Halaman**: https://pixel-boy.itch.io/ninja-adventure-asset-pack
 - **Lisensi**: CC0 1.0 Universal (bebas komersial, tanpa atribusi wajib)
-- **Ukuran**: 580KB (subset dari 112MB full pack)
+- **Ukuran**: 112MB, 2234 file
 
-### Struktur (subset)
+### Struktur lengkap
 
 ```
 assets/ninja-adventure/
-├── Tilesets/            # 20 tileset (Field, Floor, Desert, Dungeon, dll.)
-├── Tool/                # 8 ikon alat (Hoe, Axe, Sickle, WateringCan, dll.)
-├── Food/                # Item makanan
-├── Palette.png          # Palet warna referensi
-├── preview-part-1.png   # Preview 1
-├── preview-part-2.png   # Preview 2
-├── README-ninja.md      # Credit asli
-└── LICENSE-ninja.txt    # CC0 legal text
+├── Actor/                       # 7.8MB - karakter & musuh
+│   ├── Character/              # 95 karakter unik (Boy, Ninja, Knight, Princess, dll)
+│   │   └── <Name>/SpriteSheet.png + SeparateAnim/ (Walk, Idle, Attack, Jump, dll)
+│   ├── CharacterAnimated/      # Versi animated karakter
+│   ├── Animal/                # Hewan (cat, dog, chicken, dll)
+│   ├── Boss/                   # Boss sprites
+│   └── Monster/                # Musuh biasa (slime, goblin, skeleton, dll)
+├── Audio/                       # 96MB - audio
+│   ├── Musics/                 # Background music tracks
+│   ├── Sounds/                 # SFX (footsteps, hits, UI, dll)
+│   └── Jingles/                # Short musical stings
+├── Backgrounds/                 # 596KB
+│   ├── Tilesets/               # 20 tileset (Field, Floor, Desert, Dungeon, Interior, dll)
+│   ├── Animated/               # Background elements beranimasi
+│   └── Vehicles/               # Cart, boat sprites
+├── Characters/                  # RENAMED sprites (used by current game code)
+│   ├── Boy_walk.png, Boy_idle.png, Boy_faceset.png
+│   ├── Princess_walk.png, Princess_idle.png, Princess_faceset.png
+│   └── OldMan_walk.png, OldMan_idle.png, OldMan_faceset.png
+├── FX/                          # 736KB - visual effects (hits, magic, explosions)
+├── Items/                       # 736KB
+│   ├── Food/, Tool/, Weapons/, Potion/, Scroll/
+│   ├── Resource/, Treasure/, Action/, Object/, Other/
+├── Ui/                          # 1.9MB - UI elements, buttons, icons, panels, themes
+├── Palette.png                  # Palet warna referensi
+├── preview-part-1.png          # Preview 1
+├── preview-part-2.png          # Preview 2
+├── Example 1-4.gif              # Example scene animations
+├── README-ninja.md             # Credit asli
+└── LICENSE-ninja.txt           # CC0 legal text
 ```
 
 ## Credit
