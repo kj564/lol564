@@ -1455,7 +1455,9 @@ function drawNPC(n) {
 function drawPlayer() {
   const px = player.x - camera.x - TILE/2;
   const py = player.y - camera.y - TILE/2 + 4; // slight offset
-  drawCharacter(px, py, player.dir, '#4a8aff', '#5a3a1a', player.moving ? player.walkFrame : 0);
+  // Pass movement state separately from the walk-cycle index: walkFrame can be 0
+  // during movement, which previously switched the sprite back to idle for one frame.
+  drawCharacter(px, py, player.dir, '#4a8aff', '#5a3a1a', player.moving ? 1 : 0);
 }
 
 function drawCharacter(px, py, dir, shirt, hair, frame, name) {
