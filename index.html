@@ -923,6 +923,12 @@ let particles = [];
 let sleepTransition = 0; // 0..1 for fade
 let gameStarted = false;
 
+// ===== World Items (dropped items on ground) =====
+// Each: {id, x, y, pickupRadius, bobOffset}
+// Items dropped via right-click in Bag, or spawned by other systems.
+// Checked each frame for pickup via Euclidean distance.
+let itemsInWorld = [];
+
 // ---------- Map generation ----------
 function generateMap() {
   map = [];
@@ -1522,6 +1528,157 @@ function closeDialog() {
   dialogActive = false;
   dialogQueue = [];
   document.getElementById('dialog').classList.remove('show');
+}
+
+// ===== Drop Item System (Right-Click → Instantiate to world) =====
+// Drop item dari inventory ke tanah di posisi player.
+// Offset Y = +55px (beyond pickup radius: player.radius 16 + pickupRadius 22 = 38px).
+function dropItem(slotIndex) {
+  const item = inventoryData[slotIndex];
+  if (!item) {
+    toast('Slot kosong — tidak ada item untuk di-drop', 'warn');
+    return;
+  }
+  // Cari assetKey & name dari item
+  let name = item.name || item.id;
+  let assetKey = item.assetKey;
+  // Untuk crop/seed, ambil dari ItemDatabase-like mapping
+  const db = DROP_ITEM_DB[item.id];
+  if (db) { name = db.name; assetKey = db.assetKey; }
+
+  // Realtime Object Instantiation
+  const droppedItem = {
+    id: item.id,
+    name: name,
+    assetKey: assetKey,
+    x: PLAYER.x,
+    y: PLAYER.y + 55,    // +55px offset (beyond 38px pickup threshold)
+    pickupRadius: 22,
+    bobOffset: Math.random() * 6.28,
+  };
+  itemsInWorld.push(droppedItem);
+
+  // Array Nullification
+  if (item.quantity > 1) {
+    item.quantity--;
+  } else {
+    inventoryData[slotIndex] = null;
+  }
+  // Visual Re-Sync
+  renderInventory();   // re-renders Bag + hotbar
+  syncInvQuantities();
+  renderToolbar();
+
+  toast(`🗑️ Dropped: ${name}`, 'info');
+  showPopup(item.id, name, 'pickup', '−1');
+}
+
+// Item database untuk drop rendering (id → name + assetKey)
+const DROP_ITEM_DB = {
+  hoe:         { name: 'Cangkul',     assetKey: 'tool_hoe' },
+  water:       { name: 'Penyiram',    assetKey: 'tool_water' },
+  sickle:      { name: 'Sabit',       assetKey: 'tool_sickle' },
+  axe:         { name: 'Kapak',       assetKey: 'tool_axe' },
+  pickaxe:     { name: 'Pickaxe',     assetKey: 'tool_pickaxe' },
+  seeds:       { name: 'Benih',       assetKey: 'crop_parsnip' },
+  parsnip:     { name: 'Parsnip',     assetKey: 'crop_parsnip' },
+  potato:      { name: 'Kentang',     assetKey: 'crop_potato' },
+  carrot:      { name: 'Wortel',      assetKey: 'crop_carrot' },
+  tomato:      { name: 'Tomat',       assetKey: 'crop_potato' },
+  corn:        { name: 'Jagung',      assetKey: 'crop_parsnip' },
+  pumpkin:     { name: 'Labu',        assetKey: 'crop_pumpkin' },
+  cabbage:     { name: 'Kubis',      assetKey: 'crop_cabbage' },
+};
+
+// ===== World Items: Pickup Check (Euclidean distance) =====
+function checkWorldPickups() {
+  if (isMenuOpen || dialogActive || menuOpen) return;
+  for (let i = itemsInWorld.length - 1; i >= 0; i--) {
+    const item = itemsInWorld[i];
+    const dx = PLAYER.x - item.x;
+    const dy = PLAYER.y - item.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < (PLAYER.radius + item.pickupRadius)) {
+      // Pickup attempt: stacking + first empty slot
+      if (pickupToWorldItem(item)) {
+        itemsInWorld.splice(i, 1);  // Destroy from world
+        showPickupPopupWorld(item);
+      }
+    }
+  }
+}
+
+// Pickup world item ke inventory (stacking + first empty slot)
+function pickupToWorldItem(item) {
+  // Loop 1: stack ke slot existing dengan id sama
+  for (let i = 0; i < INV_SLOTS; i++) {
+    const slot = inventoryData[i];
+    if (slot && slot.id === item.id && slot.quantity < 99) {
+      slot.quantity++;
+      syncInvQuantities();
+      renderToolbar();
+      if (isMenuOpen && activeTab === 'bag') renderInventory();
+      return true;
+    }
+  }
+  // Loop 2: first empty slot
+  for (let i = 0; i < INV_SLOTS; i++) {
+    if (!inventoryData[i]) {
+      inventoryData[i] = { id: item.id, quantity: 1, name: item.name, assetKey: item.assetKey };
+      syncInvQuantities();
+      renderToolbar();
+      if (isMenuOpen && activeTab === 'bag') renderInventory();
+      return true;
+    }
+  }
+  // Inventory full
+  toast('🎒 Inventory penuh! Tidak bisa pickup', 'warn');
+  return false;
+}
+
+// Popup untuk world item pickup
+function showPickupPopupWorld(item) {
+  showPopup(item.id, item.name, 'pickup', '+1');
+}
+
+// ===== Render world items di canvas =====
+function drawWorldItems() {
+  const t = performance.now() / 1000;
+  for (const item of itemsInWorld) {
+    const sx = item.x - camera.x;
+    const sy = item.y - camera.y + Math.sin(t * 2 + item.bobOffset) * 3;
+    if (sx < -40 || sx > canvas.clientWidth + 40 || sy < -40 || sy > canvas.clientHeight + 40) continue;
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(sx, item.y - camera.y + 16, 10, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Glow halo saat player dekat
+    const dist = Math.hypot(PLAYER.x - item.x, PLAYER.y - item.y);
+    if (dist < item.pickupRadius + 30) {
+      const intensity = 1 - (dist / (item.pickupRadius + 30));
+      ctx.fillStyle = `rgba(255, 213, 74, ${0.2 * intensity})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 20, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Item sprite (real asset)
+    const db = DROP_ITEM_DB[item.id];
+    const assetKey = db ? db.assetKey : item.assetKey;
+    const img = invAssets[assetKey];
+    if (img && img.complete && img.naturalWidth) {
+      const sw = img.naturalWidth, sh = img.naturalHeight;
+      const scale = Math.min(32 / sw, 32 / sh, 3);
+      const dw = sw * scale, dh = sh * scale;
+      ctx.drawImage(img, 0, 0, sw, sh, sx - dw/2, sy - dh/2, dw, dh);
+    } else {
+      ctx.fillStyle = '#ffd54a';
+      ctx.fillRect(sx - 8, sy - 8, 16, 16);
+    }
+  }
 }
 
 // ---------- Toasts ----------
@@ -2751,6 +2908,8 @@ function render() {
       if (cropMap[y][x]) drawCrop(cropMap[y][x], x, y);
     }
   }
+  // World items (dropped items on ground) — render above crops, below player
+  drawWorldItems();
   // ===== PASS 3: Layer 3 (Collision) — walls, trees, fences =====
   for (let y = startY; y <= endY; y++) {
     for (let x = startX; x <= endX; x++) {
@@ -2814,6 +2973,7 @@ function loop(now) {
     updateParticles(dt);
     spawnNightFireflies();
     updateFireflies(dt);
+    checkWorldPickups();   // Check dropped items pickup (Euclidean distance)
     updateCamera();   // Smooth lerp + confiner clamp (BEFORE render)
     render();
     updateHUD();
@@ -2958,6 +3118,11 @@ function renderInventory() {
       // Drag source listeners
       itemEl.addEventListener('dragstart', handleDragStart);
       itemEl.addEventListener('dragend', handleDragEnd);
+      // Right-click → Drop item (Context Menu Hijacking)
+      itemEl.addEventListener('contextmenu', (e) => {
+        e.preventDefault();   // block browser context menu
+        dropItem(i);
+      });
 
       if (item.quantity > 1) {
         const count = document.createElement('div');
