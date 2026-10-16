@@ -1460,11 +1460,12 @@ function drawChests() {
       const frameH = 16;   // full height
       // Select frame: closed (sx=1) or open (sx=17)
       const sx_src = chest.isOpened ? 17 : 1;
-      // Scale to fill tile: 48px wide × 32px tall (non-uniform for better fill)
-      const dw = TILE;           // full tile width (48px)
-      const dh = TILE * 0.67;    // 2/3 tile height (32px)
-      const dx = sx;             // left-aligned to tile
-      const dy = sy + TILE - dh; // anchored to bottom of tile
+      // Scale uniformly to fill tile height (preserve aspect ratio, no squish)
+      // Frame is 14×16 (portrait). Scale by height: dh=48, dw=48*(14/16)=42
+      const dh = TILE;              // full tile height (48px)
+      const dw = TILE * (frameW / frameH);  // 48 * (14/16) = 42px (auto width)
+      const dx = sx + (TILE - dw) / 2;     // center horizontally in tile
+      const dy = sy;                         // top of tile
       ctx.drawImage(chestImg, sx_src, 0, frameW, frameH, dx, dy, dw, dh);
       // Open frame already shows open chest — no overlay needed
     } else {
