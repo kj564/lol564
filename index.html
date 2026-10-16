@@ -3,808 +3,1617 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<meta name="theme-color" content="#0b1020" />
-<title>2048 NEON — Gabung Ubin Sampai 2048!</title>
+<meta name="theme-color" content="#1a2a1a" />
+<title>Harvest Vale — Petualangan Bertani Top-Down</title>
 <style>
-  :root {
-    --bg-0: #070a16;
-    --bg-1: #0d1228;
-    --board-bg: rgba(20, 26, 54, 0.72);
-    --cell-bg: rgba(255, 255, 255, 0.04);
-    --text: #e8ecff;
-    --text-dim: #8a93c2;
-    --accent: #7c5cff;
-    --accent-2: #22d3ee;
-    --danger: #ff5c7c;
-    --good: #2ee6a8;
-    --radius: 14px;
-    --gap: 12px;
-  }
-
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; margin: 0; }
-  body {
-    font-family: 'Segoe UI', system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
-    color: var(--text);
-    background:
-      radial-gradient(1200px 800px at 80% -10%, rgba(124, 92, 255, 0.22), transparent 60%),
-      radial-gradient(900px 700px at -10% 110%, rgba(34, 211, 238, 0.18), transparent 55%),
-      linear-gradient(180deg, var(--bg-0), var(--bg-1));
-    min-height: 100dvh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-    overflow: hidden;
-  }
-
-  .app {
-    width: 100%;
-    max-width: 480px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  header.top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  .brand {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.05;
-  }
-  .brand h1 {
-    margin: 0;
-    font-size: clamp(28px, 8vw, 40px);
-    font-weight: 900;
-    letter-spacing: -1px;
-    background: linear-gradient(90deg, #fff, #b9a7ff 60%, #6ee7ff);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    text-shadow: 0 0 24px rgba(124, 92, 255, 0.35);
-  }
-  .brand p {
-    margin: 4px 0 0;
-    font-size: 12px;
-    color: var(--text-dim);
-    font-weight: 500;
-  }
-
-  .scores { display: flex; gap: 8px; }
-  .score-box {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 12px;
-    padding: 8px 14px;
-    text-align: center;
-    min-width: 78px;
-    backdrop-filter: blur(8px);
-  }
-  .score-box .label {
-    font-size: 10px;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    font-weight: 700;
-  }
-  .score-box .value {
-    font-size: 22px;
-    font-weight: 800;
-    margin-top: 2px;
-    color: #fff;
-  }
-  .score-box.score .value { color: #c4b5ff; }
-  .score-box.best .value { color: #6ee7ff; }
-  .score-box .delta {
-    position: absolute;
-    color: var(--good);
-    font-weight: 800;
-    font-size: 14px;
-    pointer-events: none;
-    animation: floatUp 0.9s ease-out forwards;
-  }
-  @keyframes floatUp {
-    0% { transform: translateY(0); opacity: 1; }
-    100% { transform: translateY(-28px); opacity: 0; }
-  }
-
-  .toolbar { display: flex; gap: 8px; }
-  .btn {
-    appearance: none;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: linear-gradient(180deg, rgba(124,92,255,0.9), rgba(99,76,217,0.9));
-    color: #fff;
-    font-weight: 700;
-    font-size: 13px;
-    padding: 10px 16px;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: transform 0.08s ease, box-shadow 0.2s ease, filter 0.2s ease;
-    box-shadow: 0 6px 18px rgba(124,92,255,0.35);
-  }
-  .btn:hover { filter: brightness(1.08); }
-  .btn:active { transform: translateY(1px) scale(0.98); }
-  .btn.secondary {
-    background: rgba(255,255,255,0.06);
-    border-color: rgba(255,255,255,0.1);
-    box-shadow: none;
-    color: var(--text);
-  }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  .board-wrap {
-    position: relative;
-    aspect-ratio: 1 / 1;
-    width: 100%;
-    background: var(--board-bg);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 20px;
-    padding: var(--gap);
-    backdrop-filter: blur(10px);
-    box-shadow:
-      0 30px 60px -20px rgba(0,0,0,0.6),
-      0 0 0 1px rgba(124,92,255,0.12),
-      inset 0 0 40px rgba(124,92,255,0.06);
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; background: #0a0f0a; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #fff; }
+  #game-container {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: #0a0f0a;
     touch-action: none;
-    user-select: none;
+  }
+  #game-canvas {
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    display: block;
+    background: #2d4a2d;
+    max-width: 100vw; max-height: 100vh;
   }
 
-  .grid-bg {
-    position: absolute;
-    inset: var(--gap);
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    grid-template-rows: repeat(4, 1fr);
-    gap: var(--gap);
-  }
-  .grid-bg .cell {
-    background: var(--cell-bg);
-    border-radius: 10px;
-    border: 1px solid rgba(255,255,255,0.03);
-  }
-
-  .tiles {
-    position: absolute;
-    inset: var(--gap);
+  /* HUD overlay */
+  #hud {
+    position: fixed; top: 0; left: 0; right: 0;
+    padding: 10px 14px;
+    display: flex; justify-content: space-between; align-items: flex-start;
     pointer-events: none;
-  }
-  .tile {
-    position: absolute;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 10px;
-    font-weight: 800;
-    font-size: clamp(20px, 6vw, 34px);
-    color: #fff;
-    transition: transform 0.13s cubic-bezier(0.22, 0.61, 0.36, 1);
-    will-change: transform;
-    box-shadow: 0 6px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.15);
-  }
-  .tile.new { animation: pop 0.18s ease-out; }
-  .tile.merged { animation: merge 0.2s ease-out; z-index: 2; }
-  @keyframes pop {
-    0% { transform: var(--pos) scale(0); }
-    60% { transform: var(--pos) scale(1.12); }
-    100% { transform: var(--pos) scale(1); }
-  }
-  @keyframes merge {
-    0% { transform: var(--pos) scale(1); }
-    50% { transform: var(--pos) scale(1.22); }
-    100% { transform: var(--pos) scale(1); }
-  }
-
-  /* Tile colors per value */
-  .t-2    { background: linear-gradient(135deg, #3a4172, #4a5290); color: #dfe4ff; }
-  .t-4    { background: linear-gradient(135deg, #4a5290, #5b63b0); color: #fff; }
-  .t-8    { background: linear-gradient(135deg, #7c5cff, #6a4cf0); }
-  .t-16   { background: linear-gradient(135deg, #9b5cff, #7d3df0); }
-  .t-32   { background: linear-gradient(135deg, #b14dff, #8a2cf0); }
-  .t-64   { background: linear-gradient(135deg, #d63df0, #b016d6); }
-  .t-128  { background: linear-gradient(135deg, #ff4d9d, #e0167a); font-size: clamp(18px, 5vw, 30px); }
-  .t-256  { background: linear-gradient(135deg, #ff5c7c, #e0304f); font-size: clamp(18px, 5vw, 30px); }
-  .t-512  { background: linear-gradient(135deg, #ff8a3d, #f05a16); font-size: clamp(18px, 5vw, 30px); }
-  .t-1024 { background: linear-gradient(135deg, #ffd23d, #f0a016); color: #2a1500; font-size: clamp(16px, 4.5vw, 26px); }
-  .t-2048 { background: linear-gradient(135deg, #2ee6a8, #16d0e0); color: #04231f; font-size: clamp(16px, 4.5vw, 26px); box-shadow: 0 0 30px rgba(46,230,168,0.6); }
-  .t-super { background: linear-gradient(135deg, #22d3ee, #7c5cff); font-size: clamp(14px, 4vw, 22px); }
-
-  .overlay {
-    position: absolute;
-    inset: 0;
-    border-radius: 20px;
-    background: rgba(7, 10, 22, 0.78);
-    backdrop-filter: blur(6px);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
-    text-align: center;
-    padding: 24px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
     z-index: 10;
+    font-size: 13px;
+    gap: 8px;
+    flex-wrap: wrap;
   }
-  .overlay.show { opacity: 1; pointer-events: auto; }
-  .overlay h2 {
-    margin: 0;
-    font-size: clamp(28px, 8vw, 44px);
-    font-weight: 900;
-    background: linear-gradient(90deg, #fff, #b9a7ff 60%, #6ee7ff);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-  .overlay.lose h2 {
-    background: linear-gradient(90deg, #fff, #ff8aa3, #ff5c7c);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-  .overlay p { margin: 0; color: var(--text-dim); font-size: 14px; }
-
-  .hint {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: var(--text-dim);
-    font-size: 12px;
-  }
-  .hint .keys span {
-    display: inline-block;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(255,255,255,0.04);
-    border-radius: 6px;
-    padding: 2px 6px;
-    margin: 0 1px;
+  .hud-group { display: flex; gap: 8px; pointer-events: auto; flex-wrap: wrap; }
+  .hud-pill {
+    background: rgba(15, 25, 15, 0.85);
+    border: 2px solid rgba(180, 220, 120, 0.5);
+    border-radius: 10px;
+    padding: 6px 12px;
+    backdrop-filter: blur(6px);
+    display: flex; align-items: center; gap: 6px;
     font-weight: 700;
-    color: #c4b5ff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  }
+  .hud-pill .icon { font-size: 16px; }
+  .hud-pill.gold { border-color: #ffd54a; color: #ffe89a; }
+  .hud-pill.day { border-color: #88c0ff; color: #c4dcff; }
+  .hud-pill.time { border-color: #ffb866; color: #ffd9b0; }
+  .hud-pill.season { border-color: #b8e986; color: #d4f0a0; }
+
+  /* Toolbar (tools) */
+  #toolbar {
+    position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 6px;
+    background: rgba(15, 25, 15, 0.9);
+    border: 2px solid rgba(180, 220, 120, 0.5);
+    border-radius: 12px;
+    padding: 8px;
+    z-index: 10;
+    pointer-events: auto;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+  }
+  .tool-slot {
+    width: 52px; height: 52px;
+    border: 2px solid rgba(255,255,255,0.15);
+    border-radius: 8px;
+    background: rgba(0,0,0,0.3);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.1s, border-color 0.15s;
+  }
+  .tool-slot:hover { border-color: rgba(255,255,255,0.4); }
+  .tool-slot.active {
+    border-color: #ffd54a;
+    background: rgba(255, 213, 74, 0.15);
+    transform: translateY(-2px);
+    box-shadow: 0 0 12px rgba(255, 213, 74, 0.4);
+  }
+  .tool-slot .tool-icon { font-size: 22px; line-height: 1; }
+  .tool-slot .tool-key {
+    position: absolute; top: 2px; left: 4px;
+    font-size: 9px; color: #88c0ff; font-weight: 800;
+  }
+  .tool-slot .tool-count {
+    position: absolute; bottom: 2px; right: 4px;
+    font-size: 10px; color: #fff; font-weight: 800;
+    text-shadow: 1px 1px 0 #000;
   }
 
-  footer.foot {
-    text-align: center;
-    color: var(--text-dim);
-    font-size: 11px;
-    margin-top: 4px;
+  /* Dialog box */
+  #dialog {
+    position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%);
+    width: min(560px, 92vw);
+    background: rgba(15, 25, 15, 0.96);
+    border: 3px solid rgba(180, 220, 120, 0.7);
+    border-radius: 14px;
+    padding: 16px 20px;
+    z-index: 20;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    display: none;
   }
-  footer.foot a { color: #8aa0ff; text-decoration: none; }
+  #dialog.show { display: block; animation: dialogIn 0.18s ease-out; }
+  @keyframes dialogIn { from { transform: translate(-50%, 10px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+  #dialog .speaker {
+    font-size: 13px; font-weight: 800; color: #ffd54a;
+    margin-bottom: 6px; letter-spacing: 0.5px;
+  }
+  #dialog .text {
+    font-size: 15px; line-height: 1.5; color: #e8f0d8;
+  }
+  #dialog .hint {
+    margin-top: 10px; font-size: 11px; color: #88a06a; text-align: right;
+  }
 
-  @media (max-width: 360px) {
-    :root { --gap: 8px; }
-    .score-box { min-width: 64px; padding: 6px 10px; }
-    .score-box .value { font-size: 18px; }
+  /* Shop / menu panel */
+  #menu {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 30;
+    backdrop-filter: blur(4px);
   }
+  #menu.show { display: flex; }
+  .menu-panel {
+    width: min(640px, 94vw); max-height: 86vh;
+    background: linear-gradient(180deg, #1a2a1a, #0f1a0f);
+    border: 3px solid rgba(180, 220, 120, 0.7);
+    border-radius: 18px;
+    padding: 20px;
+    overflow-y: auto;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.7);
+  }
+  .menu-panel h2 {
+    font-size: 22px; font-weight: 900;
+    background: linear-gradient(90deg, #fff, #b8e986);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin-bottom: 4px;
+  }
+  .menu-panel .subtitle { font-size: 12px; color: #88a06a; margin-bottom: 16px; }
+  .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  @media (max-width: 480px) { .menu-grid { grid-template-columns: 1fr; } }
+  .menu-item {
+    display: flex; align-items: center; gap: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, transform 0.08s;
+  }
+  .menu-item:hover { background: rgba(180,220,120,0.1); border-color: rgba(180,220,120,0.4); }
+  .menu-item:active { transform: scale(0.98); }
+  .menu-item:disabled, .menu-item.disabled { opacity: 0.4; cursor: not-allowed; }
+  .menu-item .emoji { font-size: 28px; }
+  .menu-item .info { flex: 1; min-width: 0; }
+  .menu-item .name { font-weight: 700; font-size: 14px; color: #fff; }
+  .menu-item .meta { font-size: 11px; color: #88a06a; }
+  .menu-item .price { font-weight: 800; font-size: 13px; }
+  .menu-item .price.buy { color: #ffd54a; }
+  .menu-item .price.sell { color: #88e06a; }
+  .menu-item .qty {
+    font-size: 11px; color: #c4d8a0; margin-top: 2px;
+  }
+  .menu-close {
+    margin-top: 16px; width: 100%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    padding: 10px; border-radius: 10px; cursor: pointer;
+    font-weight: 700; font-size: 13px;
+  }
+  .menu-close:hover { background: rgba(255,255,255,0.12); }
+
+  /* Toasts */
+  #toasts {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column-reverse; gap: 6px;
+    z-index: 25; pointer-events: none;
+    width: max-content; max-width: 92vw;
+  }
+  .toast {
+    background: rgba(15, 25, 15, 0.95);
+    border: 2px solid rgba(180, 220, 120, 0.5);
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    animation: toastIn 0.2s ease-out, toastOut 0.4s ease-in 1.8s forwards;
+  }
+  .toast.gold { border-color: #ffd54a; color: #ffe89a; }
+  .toast.warn { border-color: #ff8a5c; color: #ffd9c8; }
+  .toast.info { border-color: #88c0ff; color: #c4dcff; }
+  @keyframes toastIn { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes toastOut { to { transform: translateY(-10px); opacity: 0; } }
+
+  /* Help overlay */
+  #help-btn {
+    position: fixed; top: 10px; right: 10px;
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(15,25,15,0.85);
+    border: 2px solid rgba(180,220,120,0.5);
+    color: #fff; font-size: 18px; font-weight: 800;
+    cursor: pointer; z-index: 11;
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(6px);
+  }
+  #help-btn:hover { background: rgba(180,220,120,0.2); }
+  #help-modal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: none; align-items: center; justify-content: center;
+    z-index: 40; backdrop-filter: blur(4px);
+    padding: 16px;
+  }
+  #help-modal.show { display: flex; }
+  .help-panel {
+    background: linear-gradient(180deg, #1a2a1a, #0f1a0f);
+    border: 3px solid rgba(180, 220, 120, 0.7);
+    border-radius: 18px;
+    padding: 22px;
+    max-width: 520px; width: 100%;
+    max-height: 86vh; overflow-y: auto;
+  }
+  .help-panel h2 {
+    font-size: 22px; font-weight: 900;
+    background: linear-gradient(90deg, #fff, #b8e986);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin-bottom: 12px;
+  }
+  .help-panel h3 { font-size: 14px; color: #ffd54a; margin: 14px 0 6px; font-weight: 800; }
+  .help-panel p, .help-panel li { font-size: 13px; color: #c8d8b0; line-height: 1.6; }
+  .help-panel ul { padding-left: 18px; }
+  .help-panel kbd {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 11px; font-weight: 700;
+    color: #c4dcff;
+  }
+
+  /* Mobile dpad */
+  #dpad {
+    position: fixed; bottom: 80px; left: 14px;
+    width: 132px; height: 132px;
+    z-index: 12;
+    display: none;
+    touch-action: none;
+  }
+  #dpad.show { display: block; }
+  .dpad-btn {
+    position: absolute;
+    width: 44px; height: 44px;
+    background: rgba(15,25,15,0.7);
+    border: 2px solid rgba(180,220,120,0.5);
+    border-radius: 10px;
+    color: #fff; font-size: 20px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    user-select: none;
+    backdrop-filter: blur(4px);
+  }
+  .dpad-btn:active, .dpad-btn.pressed { background: rgba(180,220,120,0.3); }
+  #dpad .up    { top: 0; left: 44px; }
+  #dpad .down  { bottom: 0; left: 44px; }
+  #dpad .left  { top: 44px; left: 0; }
+  #dpad .right { top: 44px; right: 0; }
+  #action-btn {
+    position: fixed; bottom: 90px; right: 14px;
+    width: 72px; height: 72px; border-radius: 50%;
+    background: rgba(255, 213, 74, 0.85);
+    border: 3px solid #fff;
+    color: #2a1500; font-size: 11px; font-weight: 900;
+    display: none; align-items: center; justify-content: center;
+    text-align: center; line-height: 1.1;
+    z-index: 12;
+    box-shadow: 0 6px 20px rgba(255,213,74,0.4);
+  }
+  #action-btn.show { display: flex; }
+  #action-btn:active { transform: scale(0.95); }
+  @media (max-width: 768px) {
+    #dpad.has-touch { display: block; }
+    #action-btn.has-touch { display: flex; }
+  }
+
+  /* Loading */
+  #loading {
+    position: fixed; inset: 0;
+    background: #0a0f0a;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 100;
+    color: #b8e986;
+    gap: 14px;
+  }
+  #loading .title { font-size: 28px; font-weight: 900; letter-spacing: 2px; }
+  #loading .spin {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: 4px solid rgba(180,220,120,0.2);
+    border-top-color: #b8e986;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
-  <div class="app">
-    <header class="top">
-      <div class="brand">
-        <h1>2048</h1>
-        <p>Gabungkan ubin neon sampai 2048!</p>
-      </div>
-      <div class="scores">
-        <div class="score-box score" style="position:relative">
-          <div class="label">Skor</div>
-          <div class="value" id="score">0</div>
-        </div>
-        <div class="score-box best" style="position:relative">
-          <div class="label">Terbaik</div>
-          <div class="value" id="best">0</div>
-        </div>
-      </div>
-    </header>
+  <div id="loading">
+    <div class="title">🌾 Harvest Vale</div>
+    <div class="spin"></div>
+    <div style="font-size:12px; color:#88a06a;">Memuat dunia...</div>
+  </div>
 
-    <div class="toolbar">
-      <button class="btn" id="newGame">Game Baru</button>
-      <button class="btn secondary" id="undo">Undo</button>
-      <button class="btn secondary" id="keepGoing" style="display:none">Lanjut Main</button>
+  <div id="game-container">
+    <canvas id="game-canvas"></canvas>
+  </div>
+
+  <div id="hud">
+    <div class="hud-group">
+      <div class="hud-pill gold"><span class="icon">💰</span><span id="hud-gold">500</span>g</div>
+      <div class="hud-pill day"><span class="icon">📅</span>Hari <span id="hud-day">1</span></div>
+      <div class="hud-pill season"><span class="icon" id="hud-season-icon">🌱</span><span id="hud-season">Semi</span></div>
     </div>
-
-    <div class="board-wrap" id="boardWrap">
-      <div class="grid-bg" id="gridBg"></div>
-      <div class="tiles" id="tiles"></div>
-      <div class="overlay" id="overlay">
-        <h2 id="overlayTitle">Kamu Menang!</h2>
-        <p id="overlayText">Kamu berhasil mencapai 2048!</p>
-        <div style="display:flex; gap:8px;">
-          <button class="btn" id="overlayPrimary">Main Lagi</button>
-          <button class="btn secondary" id="overlaySecondary">Lanjut Main</button>
-        </div>
-      </div>
+    <div class="hud-group">
+      <div class="hud-pill time"><span class="icon" id="hud-time-icon">☀️</span><span id="hud-time">06:00</span></div>
     </div>
+  </div>
 
-    <div class="hint">
-      <div class="keys">
-        Gerak: <span>←</span><span>↑</span><span>↓</span><span>→</span> atau geser
-      </div>
-      <div>U: Undo</div>
+  <button id="help-btn" title="Bantuan">?</button>
+
+  <div id="toolbar"></div>
+
+  <div id="dialog">
+    <div class="speaker" id="dialog-speaker"></div>
+    <div class="text" id="dialog-text"></div>
+    <div class="hint">Tekan Spasi / E untuk lanjut</div>
+  </div>
+
+  <div id="menu">
+    <div class="menu-panel" id="menu-panel"></div>
+  </div>
+
+  <div id="toasts"></div>
+
+  <div id="dpad">
+    <div class="dpad-btn up"    data-dir="up">▲</div>
+    <div class="dpad-btn left"  data-dir="left">◀</div>
+    <div class="dpad-btn right" data-dir="right">▶</div>
+    <div class="dpad-btn down"  data-dir="down">▼</div>
+  </div>
+  <button id="action-btn">AKSI<br/>(E)</button>
+
+  <div id="help-modal">
+    <div class="help-panel">
+      <h2>🌾 Harvest Vale — Petunjuk</h2>
+      <p>Selamat datang di <strong>Harvest Vale</strong>! Kamu adalah petani baru. Tanam, rawat, panen, dan jual hasil panenmu untuk membangun pertanian impian.</p>
+
+      <h3>🕹️ Kontrol</h3>
+      <ul>
+        <li>Bergerak: <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> atau tombol panah</li>
+        <li>Pilih alat: <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> <kbd>5</kbd></li>
+        <li>Gunakan alat / interaksi: <kbd>Spasi</kbd> atau <kbd>E</kbd></li>
+        <li>Buka toko (dekat bangunan toko): <kbd>B</kbd></li>
+        <li>Tidur (dekat rumah): <kbd>T</kbd></li>
+        <li>Bantuan: <kbd>H</kbd> atau <kbd>?</kbd></li>
+        <li>Tutup menu: <kbd>Esc</kbd></li>
+      </ul>
+
+      <h3>🌱 Siklus Bertani</h3>
+      <ul>
+        <li><strong>1. Cangkul</strong> (Hoe) — ubah rumput menjadi tanah garapan</li>
+        <li><strong>2. Tanam Benih</strong> (Seeds) — pilih benih dari toolbar</li>
+        <li><strong>3. Siram</strong> (Watering Can) — siram tiap hari agar tumbuh. Isi ulang air di kolam!</li>
+        <li><strong>4. Panen</strong> (Sickle) — saat tanaman matang, panen untuk dijual</li>
+        <li><strong>5. Jual</strong> — bawa hasil panen ke toko dan jual dapat gold</li>
+      </ul>
+
+      <h3>🕐 Waktu & Hari</h3>
+      <p>Waktu berjalan (06:00–00:00). Saat tidur, hari berganti dan tanaman tumbuh satu tahap (jika sudah disiram). Tiap musim 28 hari.</p>
+
+      <h3>💡 Tips</h3>
+      <ul>
+        <li>Penyiram air terbatas — isi di kolam (petak biru di pojok peta).</li>
+        <li>Tanaman layu jika tidak disiram — tidak akan tumbuh hari itu.</li>
+        <li>Belilah benih di toko. Tiap tanaman punya harga jual & waktu tumbuh berbeda.</li>
+        <li>Progress otomatis tersimpan di browser.</li>
+      </ul>
+
+      <button class="menu-close" id="help-close" style="margin-top:18px;">Mengerti, mulai bertani!</button>
     </div>
-
-    <footer class="foot">
-      Dibuat dengan ❤ · <a id="repoLink" href="#" target="_blank" rel="noopener">Lihat di GitHub</a>
-    </footer>
   </div>
 
 <script>
-(() => {
-  'use strict';
-  const SIZE = 4;
-  const WIN_VALUE = 2048;
-  const STORAGE_KEY = 'neon2048_state_v1';
-  const BEST_KEY = 'neon2048_best_v1';
+'use strict';
+/* ============================================================
+   HARVEST VALE — 2D Top-Down Farming Game
+   Single-file canvas game. No external assets.
+   ============================================================ */
 
-  // ===== State =====
-  let grid;            // 2D array of tile objects or null
-  let tiles;           // flat list with ids for rendering
-  let score;
-  let best = +(localStorage.getItem(BEST_KEY) || 0);
-  let history;         // stack of previous states for undo
-  let nextId = 1;
-  let won = false;
-  let keepGoing = false;
-  let gameOver = false;
+// ---------- Config ----------
+const TILE = 32;
+const MAP_W = 40;
+const MAP_H = 30;
+const PLAYER_SPEED = 2.6;       // pixels per frame at 60fps baseline
+const DAY_LENGTH_MS = 1000 * 60 * 4; // 4 minutes real = 1 day (06:00-00:00)
+const SAVE_KEY = 'harvestvale_save_v1';
 
-  const tilesEl = document.getElementById('tiles');
-  const gridBgEl = document.getElementById('gridBg');
-  const scoreEl = document.getElementById('score');
-  const bestEl = document.getElementById('best');
-  const overlay = document.getElementById('overlay');
-  const overlayTitle = document.getElementById('overlayTitle');
-  const overlayText = document.getElementById('overlayText');
-  const overlayPrimary = document.getElementById('overlayPrimary');
-  const overlaySecondary = document.getElementById('overlaySecondary');
-  const newGameBtn = document.getElementById('newGame');
-  const undoBtn = document.getElementById('undo');
-  const keepGoingBtn = document.getElementById('keepGoing');
+// Tile types
+const T = {
+  GRASS: 0,
+  GRASS2: 1,
+  TILLED: 2,
+  WATERED: 3,
+  WATER: 4,
+  PATH: 5,
+  FLOOR: 6,
+  WALL: 7,
+  SHOP_FLOOR: 8,
+  SHOP_WALL: 9,
+  TREE: 10,
+  BUSH: 11,
+  FLOWER: 12,
+  SAND: 13,
+  FENCE: 14,
+  POND_EDGE: 15,
+};
 
-  // ===== Build grid background =====
-  for (let i = 0; i < SIZE * SIZE; i++) {
-    const c = document.createElement('div');
-    c.className = 'cell';
-    gridBgEl.appendChild(c);
-  }
+// Tools
+const TOOLS = [
+  { id: 'hoe',    name: 'Cangkul',   icon: '⛏️', key: '1' },
+  { id: 'seeds',  name: 'Benih',     icon: '🌱', key: '2' },
+  { id: 'water',  name: 'Penyiram',  icon: '💧', key: '3' },
+  { id: 'sickle', name: 'Sabit',     icon: '✂️', key: '4' },
+  { id: 'axe',    name: 'Kapak',     icon: '🪓', key: '5' },
+];
 
-  // ===== Helpers =====
-  function emptyGrid() {
-    const g = [];
-    for (let r = 0; r < SIZE; r++) {
-      g.push(new Array(SIZE).fill(null));
+// Crops
+const CROPS = {
+  parsnip: { name: 'Parsnip',   days: 3, sell: 35,  seedCost: 20,  color: '#f4d35e', stem: '#7aa050', icon: '🥕' },
+  potato:  { name: 'Kentang',   days: 4, sell: 80,  seedCost: 50,  color: '#b07a4a', stem: '#6a8a40', icon: '🥔' },
+  tomato:  { name: 'Tomat',     days: 5, sell: 120, seedCost: 80,  color: '#e34a3a', stem: '#5a8a40', icon: '🍅' },
+  corn:    { name: 'Jagung',    days: 6, sell: 150, seedCost: 100, color: '#ffd23d', stem: '#5a8a30', icon: '🌽' },
+};
+const SEED_LIST = Object.keys(CROPS);
+
+// ---------- State ----------
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+let map = [];          // 2D array of tile type
+let cropMap = [];      // 2D array of crop objects or null
+let player = {
+  x: 20 * TILE, y: 22 * TILE,
+  dir: 'down',
+  walkFrame: 0,
+  walkTime: 0,
+  moving: false,
+  gold: 500,
+  energy: 100,
+  inventory: { parsnip: 0, potato: 0, tomato: 0, corn: 0 },
+  seeds: { parsnip: 5, potato: 2, tomato: 1, corn: 0 },
+  water: 20, maxWater: 20,
+};
+let selectedTool = 'hoe';
+let selectedSeed = 'parsnip';
+let day = 1;
+let season = 'spring'; // spring/summer/fall/winter
+let seasonDay = 1;
+let timeOfDay = 6 * 60; // minutes from 00:00, start 06:00
+let lastFrame = performance.now();
+let camera = { x: 0, y: 0 };
+let keys = {};
+let mobileMove = { up: false, down: false, left: false, right: false };
+let isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+let dialogQueue = [];
+let dialogActive = false;
+let menuOpen = null; // 'shop' | 'inventory' | null
+let toastList = [];
+let nearbyAction = null; // {type:'shop'|'sleep'|'npc', x, y}
+let npcs = [];
+let particles = [];
+let sleepTransition = 0; // 0..1 for fade
+let gameStarted = false;
+
+// ---------- Map generation ----------
+function generateMap() {
+  map = [];
+  cropMap = [];
+  for (let y = 0; y < MAP_H; y++) {
+    const row = [], cRow = [];
+    for (let x = 0; x < MAP_W; x++) {
+      let t = T.GRASS;
+      // Random grass variation
+      if (Math.random() < 0.18) t = T.GRASS2;
+      if (Math.random() < 0.04) t = T.FLOWER;
+      if (Math.random() < 0.06) t = T.BUSH;
+      row.push(t);
+      cRow.push(null);
     }
-    return g;
+    map.push(row);
+    cropMap.push(cRow);
   }
 
-  function cloneTiles(list) {
-    return list.map(t => ({ ...t, mergedFrom: null }));
+  // Border trees
+  for (let x = 0; x < MAP_W; x++) {
+    map[0][x] = T.TREE;
+    map[MAP_H-1][x] = T.TREE;
+  }
+  for (let y = 0; y < MAP_H; y++) {
+    map[y][0] = T.TREE;
+    map[y][MAP_W-1] = T.TREE;
   }
 
-  function snapshot() {
-    return {
-      grid: grid.map(row => row.map(t => t ? { ...t } : null)),
-      tiles: cloneTiles(tiles),
-      score: score,
-      nextId: nextId,
-      won, keepGoing, gameOver
+  // Pond (top-left area)
+  const pondX = 3, pondY = 3, pondW = 6, pondH = 4;
+  for (let y = pondY; y < pondY + pondH; y++) {
+    for (let x = pondX; x < pondX + pondW; x++) {
+      map[y][x] = T.WATER;
+    }
+  }
+  // Pond edges (sand)
+  for (let y = pondY - 1; y < pondY + pondH + 1; y++) {
+    for (let x = pondX - 1; x < pondX + pondW + 1; x++) {
+      if (y < 0 || y >= MAP_H || x < 0 || x >= MAP_W) continue;
+      if (map[y][x] !== T.WATER) map[y][x] = T.SAND;
+    }
+  }
+  // Re-apply pond (sand override would replace water)
+  for (let y = pondY; y < pondY + pondH; y++) {
+    for (let x = pondX; x < pondX + pondW; x++) {
+      map[y][x] = T.WATER;
+    }
+  }
+
+  // Player house (bottom-left)
+  const houseX = 4, houseY = 22, houseW = 7, houseH = 5;
+  for (let y = houseY; y < houseY + houseH; y++) {
+    for (let x = houseX; x < houseX + houseW; x++) {
+      if (y === houseY || y === houseY + houseH - 1 || x === houseX || x === houseX + houseW - 1) {
+        map[y][x] = T.WALL;
+      } else {
+        map[y][x] = T.FLOOR;
+      }
+    }
+  }
+  // Door
+  map[houseY + houseH - 1][houseX + Math.floor(houseW/2)] = T.FLOOR;
+
+  // Shop building (top-right)
+  const shopX = 30, shopY = 4, shopW = 7, shopH = 5;
+  for (let y = shopY; y < shopY + shopH; y++) {
+    for (let x = shopX; x < shopX + shopW; x++) {
+      if (y === shopY || y === shopY + shopH - 1 || x === shopX || x === shopX + shopW - 1) {
+        map[y][x] = T.SHOP_WALL;
+      } else {
+        map[y][x] = T.SHOP_FLOOR;
+      }
+    }
+  }
+  // Shop door
+  map[shopY + shopH - 1][shopX + Math.floor(shopW/2)] = T.SHOP_FLOOR;
+
+  // Paths connecting house -> center farm, shop -> center
+  for (let x = houseX + Math.floor(houseW/2); x < 20; x++) {
+    if (map[houseY - 1][x] === T.GRASS || map[houseY - 1][x] === T.GRASS2) {
+      map[houseY - 1][x] = T.PATH;
+    }
+  }
+  for (let y = shopY + shopH; y < 20; y++) {
+    if (map[y][shopX + Math.floor(shopW/2)] === T.GRASS || map[y][shopX + Math.floor(shopW/2)] === T.GRASS2) {
+      map[y][shopX + Math.floor(shopW/2)] = T.PATH;
+    }
+  }
+
+  // Fences around farmable area (center)
+  const farmX = 14, farmY = 12, farmW = 12, farmH = 8;
+  for (let x = farmX; x < farmX + farmW; x++) {
+    if (map[farmY][x] !== T.PATH) map[farmY][x] = T.FENCE;
+    if (map[farmY + farmH - 1][x] !== T.PATH) map[farmY + farmH - 1][x] = T.FENCE;
+  }
+  for (let y = farmY; y < farmY + farmH; y++) {
+    if (map[y][farmX] !== T.PATH) map[y][farmX] = T.FENCE;
+    if (map[y][farmX + farmW - 1] !== T.PATH) map[y][farmX + farmW - 1] = T.FENCE;
+  }
+  // Fence opening (gate) at bottom-center
+  map[farmY + farmH - 1][farmX + Math.floor(farmW/2)] = T.PATH;
+  map[farmY + farmH - 1][farmX + Math.floor(farmW/2) + 1] = T.PATH;
+
+  // A few decorative trees inside border
+  const treeSpots = [[6,8],[33,18],[8,18],[35,24],[18,5],[26,26]];
+  for (const [x,y] of treeSpots) {
+    if (map[y] && map[y][x] !== T.WATER) map[y][x] = T.TREE;
+  }
+
+  // NPCs
+  npcs = [
+    { id: 'maya', name: 'Maya', x: 18 * TILE, y: 6 * TILE, color: '#e36a8a', hair: '#3a2030', dir: 'down',
+      dialog: [
+        'Halo petani baru! Selamat datang di Harvest Vale.',
+        'Aku Maya. Kalau butuh benih, datangi toko di utara.',
+        'Tanaman butuh air setiap hari supaya tumbuh. Jangan lupa siram ya!'
+      ]},
+    { id: 'tom', name: 'Pak Tom', x: 28 * TILE, y: 18 * TILE, color: '#5a8a4a', hair: '#888070', dir: 'down',
+      dialog: [
+        'Hmm... musim ini tanahnya cukup subur.',
+        'Jangan lupa istirahat. Tidur di rumah biar energi pulih.'
+      ]},
+  ];
+}
+
+// ---------- Save / Load ----------
+function save() {
+  try {
+    const data = {
+      map, cropMap, player, day, season, seasonDay, timeOfDay,
+      selectedTool, selectedSeed, npcs: npcs.map(n => ({id:n.id,x:n.x,y:n.y,dir:n.dir})),
     };
-  }
-
-  function restoreSnapshot(s) {
-    grid = s.grid.map(row => row.map(t => t ? { ...t } : null));
-    tiles = cloneTiles(s.tiles);
-    score = s.score;
-    nextId = s.nextId;
-    won = s.won;
-    keepGoing = s.keepGoing;
-    gameOver = s.gameOver;
-  }
-
-  function emptyCells() {
-    const cells = [];
-    for (let r = 0; r < SIZE; r++)
-      for (let c = 0; c < SIZE; c++)
-        if (!grid[r][c]) cells.push([r, c]);
-    return cells;
-  }
-
-  function addRandomTile() {
-    const cells = emptyCells();
-    if (!cells.length) return null;
-    const [r, c] = cells[Math.floor(Math.random() * cells.length)];
-    const value = Math.random() < 0.9 ? 2 : 4;
-    const t = { id: nextId++, value, row: r, col: c, isNew: true, mergedFrom: null };
-    grid[r][c] = t;
-    tiles.push(t);
-    return t;
-  }
-
-  // ===== Movement =====
-  // directions: 'left','right','up','down'
-  function move(dir) {
-    if (gameOver) return false;
-    // backup for undo (before move)
-    const before = snapshot();
-
-    // reset transient flags
-    tiles.forEach(t => { t.isNew = false; t.mergedFrom = null; });
-
-    let moved = false;
-    let gained = 0;
-
-    const traversals = buildTraversals(dir);
-    const vec = vector(dir);
-
-    for (const r of traversals.rows) {
-      for (const c of traversals.cols) {
-        const t = grid[r][c];
-        if (!t) continue;
-        let nr = r, nc = c;
-        // slide
-        while (true) {
-          const tr = nr + vec.r;
-          const tc = nc + vec.c;
-          if (tr < 0 || tr >= SIZE || tc < 0 || tc >= SIZE) break;
-          if (grid[tr][tc]) break;
-          nr = tr; nc = tc;
-        }
-        // check merge with next cell after slide
-        const tr = nr + vec.r, tc = nc + vec.c;
-        let merged = false;
-        if (tr >= 0 && tr < SIZE && tc >= 0 && tc < SIZE) {
-          const other = grid[tr][tc];
-          if (other && other.value === t.value && !other.mergedFrom) {
-            // merge: move t into other's spot, double value
-            grid[r][c] = null;
-            grid[tr][tc] = null;
-            const mergedTile = {
-              id: nextId++,
-              value: t.value * 2,
-              row: tr, col: tc,
-              isNew: false,
-              mergedFrom: [t.id, other.id]
-            };
-            grid[tr][tc] = mergedTile;
-            // mark the two old tiles to move to (tr,tc) then get removed
-            t.row = tr; t.col = tc; t._remove = true;
-            other._remove = true;
-            tiles.push(mergedTile);
-            gained += mergedTile.value;
-            if (mergedTile.value === WIN_VALUE) won = true;
-            merged = true;
-            moved = true;
-          }
-        }
-        if (!merged && (nr !== r || nc !== c)) {
-          grid[r][c] = null;
-          grid[nr][nc] = t;
-          t.row = nr; t.col = nc;
-          moved = true;
-        }
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch(e) {}
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    if (!d || !d.map) return false;
+    map = d.map; cropMap = d.cropMap;
+    player = Object.assign(player, d.player);
+    day = d.day; season = d.season || 'spring'; seasonDay = d.seasonDay || 1;
+    timeOfDay = d.timeOfDay || 6*60;
+    selectedTool = d.selectedTool || 'hoe';
+    selectedSeed = d.selectedSeed || 'parsnip';
+    if (d.npcs) {
+      for (const sn of d.npcs) {
+        const n = npcs.find(x => x.id === sn.id);
+        if (n) { n.x = sn.x; n.y = sn.y; n.dir = sn.dir; }
       }
     }
-
-    if (!moved) return false;
-
-    score += gained;
-    if (score > best) {
-      best = score;
-      localStorage.setItem(BEST_KEY, String(best));
-    }
-    if (gained > 0) showDelta(gained);
-
-    history.push(before);
-    if (history.length > 20) history.shift();
-
-    addRandomTile();
-    render();
-
-    // cleanup removed tiles after animation
-    setTimeout(() => {
-      tiles = tiles.filter(t => !t._remove);
-      renderTiles();
-    }, 150);
-
-    if (won && !keepGoing) {
-      showOverlay('win');
-    } else if (!hasMoves()) {
-      gameOver = true;
-      showOverlay('lose');
-    }
-    save();
     return true;
-  }
+  } catch(e) { return false; }
+}
 
-  function vector(dir) {
-    return ({
-      left:  { r: 0, c: -1 },
-      right: { r: 0, c: 1 },
-      up:    { r: -1, c: 0 },
-      down:  { r: 1, c: 0 },
-    })[dir];
+// ---------- Input ----------
+window.addEventListener('keydown', (e) => {
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+  const k = e.key.toLowerCase();
+  keys[k] = true;
+  if (dialogActive) {
+    if (k === ' ' || k === 'e' || k === 'enter') advanceDialog();
+    return;
   }
-  function buildTraversals(dir) {
-    const rows = [], cols = [];
-    for (let i = 0; i < SIZE; i++) { rows.push(i); cols.push(i); }
-    if (dir === 'right') cols.reverse();
-    if (dir === 'down') rows.reverse();
-    return { rows, cols };
+  if (menuOpen) {
+    if (k === 'escape' || k === 'b') closeMenu();
+    return;
   }
+  if (k === '1') selectTool('hoe');
+  else if (k === '2') selectTool('seeds');
+  else if (k === '3') selectTool('water');
+  else if (k === '4') selectTool('sickle');
+  else if (k === '5') selectTool('axe');
+  else if (k === ' ' || k === 'e') useToolOrInteract();
+  else if (k === 'b') tryOpenShop();
+  else if (k === 't') trySleep();
+  else if (k === 'h' || k === '?') toggleHelp(true);
+  else if (k === 'escape') toggleHelp(false);
+});
+window.addEventListener('keyup', (e) => {
+  const k = e.key.toLowerCase();
+  keys[k] = false;
+});
 
-  function hasMoves() {
-    if (emptyCells().length) return true;
-    for (let r = 0; r < SIZE; r++) {
-      for (let c = 0; c < SIZE; c++) {
-        const t = grid[r][c];
-        if (!t) continue;
-        const v = t.value;
-        if (c + 1 < SIZE && grid[r][c + 1] && grid[r][c + 1].value === v) return true;
-        if (r + 1 < SIZE && grid[r + 1][c] && grid[r + 1][c].value === v) return true;
+// Mobile controls
+function bindMobile() {
+  if (!isTouchDevice) return;
+  document.getElementById('dpad').classList.add('has-touch');
+  document.getElementById('action-btn').classList.add('has-touch');
+  const dirs = ['up','down','left','right'];
+  for (const d of dirs) {
+    const el = document.querySelector(`#dpad .${d}`);
+    const press = (e) => { e.preventDefault(); mobileMove[d] = true; el.classList.add('pressed'); };
+    const release = (e) => { e.preventDefault(); mobileMove[d] = false; el.classList.remove('pressed'); };
+    el.addEventListener('touchstart', press, {passive:false});
+    el.addEventListener('touchend', release, {passive:false});
+    el.addEventListener('touchcancel', release, {passive:false});
+    el.addEventListener('mousedown', press);
+    el.addEventListener('mouseup', release);
+    el.addEventListener('mouseleave', release);
+  }
+  const ab = document.getElementById('action-btn');
+  ab.addEventListener('touchstart', (e) => { e.preventDefault(); useToolOrInteract(); }, {passive:false});
+  ab.addEventListener('click', (e) => { if (!isTouchDevice) useToolOrInteract(); });
+}
+bindMobile();
+
+// Canvas swipe to move? Not needed; dpad. But allow tap-to-face-direction.
+canvas.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 1) {
+    // Track for potential swipe-to-use-tool later
+    canvas._touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+  }
+}, {passive: true});
+canvas.addEventListener('touchend', (e) => {
+  if (!canvas._touchStart) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - canvas._touchStart.x;
+  const dy = t.clientY - canvas._touchStart.y;
+  const dist = Math.hypot(dx, dy);
+  canvas._touchStart = null;
+  if (dist < 18) {
+    // tap = use tool at facing tile
+    useToolOrInteract();
+  }
+}, {passive: true});
+
+// ---------- Toolbar UI ----------
+function renderToolbar() {
+  const tb = document.getElementById('toolbar');
+  tb.innerHTML = '';
+  for (const tool of TOOLS) {
+    const slot = document.createElement('div');
+    slot.className = 'tool-slot' + (selectedTool === tool.id ? ' active' : '');
+    slot.dataset.tool = tool.id;
+    let count = '';
+    if (tool.id === 'seeds') count = player.seeds[selectedSeed] ?? 0;
+    if (tool.id === 'water') count = `${player.water}/${player.maxWater}`;
+    slot.innerHTML = `
+      <div class="tool-key">${tool.key}</div>
+      <div class="tool-icon">${tool.icon}</div>
+      ${count ? `<div class="tool-count">${count}</div>` : ''}
+    `;
+    slot.addEventListener('click', () => {
+      selectTool(tool.id);
+      if (tool.id === 'seeds') {
+        // cycle seed if already selected
+        const idx = SEED_LIST.indexOf(selectedSeed);
+        selectedSeed = SEED_LIST[(idx + 1) % SEED_LIST.length];
+        renderToolbar();
       }
-    }
-    return false;
-  }
-
-  // ===== Rendering =====
-  function cellMetrics() {
-    const wrap = document.getElementById('boardWrap');
-    const size = wrap.clientWidth;
-    const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gap')) || 12;
-    const cell = (size - gap * (SIZE + 1)) / SIZE;
-    return { size, gap, cell };
-  }
-
-  function posStyle(r, c) {
-    const { gap, cell } = cellMetrics();
-    const x = gap + c * (cell + gap);
-    const y = gap + r * (cell + gap);
-    return { transform: `translate(${x}px, ${y}px)`, width: `${cell}px`, height: `${cell}px` };
-  }
-
-  function render() {
-    renderTiles();
-    scoreEl.textContent = score;
-    bestEl.textContent = best;
-    undoBtn.disabled = history.length === 0;
-  }
-
-  function renderTiles() {
-    const { cell } = cellMetrics();
-    // build map of existing DOM tiles by id
-    const existing = {};
-    Array.from(tilesEl.children).forEach(el => {
-      const id = el.dataset.id;
-      if (id) existing[id] = el;
     });
+    tb.appendChild(slot);
+  }
+}
+function selectTool(id) {
+  selectedTool = id;
+  renderToolbar();
+}
 
-    const seen = {};
-    for (const t of tiles) {
-      seen[t.id] = true;
-      let el = existing[t.id];
-      const isNewEl = !el;
-      if (isNewEl) {
-        el = document.createElement('div');
-        el.dataset.id = t.id;
-        tilesEl.appendChild(el);
-      }
-      const cls = tileClass(t.value);
-      el.className = 'tile ' + cls + (t.isNew ? ' new' : '') + (t.mergedFrom ? ' merged' : '');
-      // font-size for large numbers
-      if (t.value > 2048) el.classList.add('t-super');
-      const { transform, width, height } = posStyle(t.row, t.col);
-      el.style.setProperty('--pos', transform);
-      el.style.width = width;
-      el.style.height = height;
-      el.style.transform = transform;
-      if (isNewEl) {
-        // force reflow then apply transform for animation
-        el.style.transform = transform;
-      }
-      el.textContent = t.value;
+// ---------- Dialog ----------
+function showDialog(speaker, lines) {
+  if (!Array.isArray(lines)) lines = [lines];
+  dialogQueue = lines.map(t => ({ speaker, text: t }));
+  dialogActive = true;
+  document.getElementById('dialog').classList.add('show');
+  renderDialog();
+}
+function renderDialog() {
+  const cur = dialogQueue[0];
+  if (!cur) { closeDialog(); return; }
+  document.getElementById('dialog-speaker').textContent = cur.speaker;
+  document.getElementById('dialog-text').textContent = cur.text;
+}
+function advanceDialog() {
+  dialogQueue.shift();
+  if (!dialogQueue.length) { closeDialog(); return; }
+  renderDialog();
+}
+function closeDialog() {
+  dialogActive = false;
+  dialogQueue = [];
+  document.getElementById('dialog').classList.remove('show');
+}
+
+// ---------- Toasts ----------
+function toast(msg, type = '') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 2400);
+}
+
+// ---------- Help modal ----------
+function toggleHelp(show) {
+  document.getElementById('help-modal').classList.toggle('show', show);
+}
+document.getElementById('help-btn').addEventListener('click', () => toggleHelp(true));
+document.getElementById('help-close').addEventListener('click', () => toggleHelp(false));
+document.getElementById('help-modal').addEventListener('click', (e) => {
+  if (e.target.id === 'help-modal') toggleHelp(false);
+});
+
+// ---------- Tool use ----------
+function getFacingTile() {
+  const px = Math.floor((player.x + TILE/2) / TILE);
+  const py = Math.floor((player.y + TILE/2) / TILE);
+  let fx = px, fy = py;
+  if (player.dir === 'up') fy--;
+  else if (player.dir === 'down') fy++;
+  else if (player.dir === 'left') fx--;
+  else if (player.dir === 'right') fx++;
+  return { px, py, fx, fy };
+}
+
+function isWalkable(x, y) {
+  if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) return false;
+  const t = map[y][x];
+  if (t === T.TREE || t === T.WATER || t === T.WALL || t === T.SHOP_WALL || t === T.FENCE || t === T.BUSH) return false;
+  return true;
+}
+
+function useToolOrInteract() {
+  // Check nearby action first (shop/sleep/npc)
+  if (nearbyAction) {
+    if (nearbyAction.type === 'shop') openShop();
+    else if (nearbyAction.type === 'sleep') trySleep();
+    else if (nearbyAction.type === 'npc') {
+      const npc = npcs.find(n => n.id === nearbyAction.id);
+      if (npc) showDialog(npc.name, npc.dialog);
     }
-    // remove DOM tiles that no longer exist in state (already cleaned)
-    Object.keys(existing).forEach(id => {
-      if (!seen[id]) {
-        const el = existing[id];
-        el.remove();
-      }
-    });
+    return;
   }
+  const { fx, fy } = getFacingTile();
+  if (fx < 0 || fy < 0 || fx >= MAP_W || fy >= MAP_H) return;
+  const tile = map[fy][fx];
 
-  function tileClass(v) {
-    if (v <= 2048) return 't-' + v;
-    return 't-super';
-  }
-
-  function showDelta(amount) {
-    const box = document.querySelector('.score-box.score');
-    const d = document.createElement('div');
-    d.className = 'delta';
-    d.textContent = '+' + amount;
-    d.style.left = '50%';
-    d.style.top = '4px';
-    d.style.transform = 'translateX(-50%)';
-    box.appendChild(d);
-    setTimeout(() => d.remove(), 900);
-  }
-
-  function showOverlay(type) {
-    overlay.classList.remove('lose');
-    if (type === 'win') {
-      overlayTitle.textContent = 'Kamu Menang! 🎉';
-      overlayText.textContent = 'Kamu mencapai 2048! Lanjut untuk skor lebih tinggi?';
-      overlayPrimary.textContent = 'Main Lagi';
-      overlaySecondary.textContent = 'Lanjut Main';
-      overlaySecondary.style.display = '';
+  if (selectedTool === 'hoe') {
+    if (tile === T.GRASS || tile === T.GRASS2 || tile === T.FLOWER) {
+      map[fy][fx] = T.TILLED;
+      cropMap[fy][fx] = null;
+      toast('Tanah dicangkul', 'info');
+      spawnParticles(fx*TILE+TILE/2, fy*TILE+TILE/2, '#8a6a3a', 6);
+      save();
     } else {
-      overlay.classList.add('lose');
-      overlayTitle.textContent = 'Game Over 😵';
-      overlayText.textContent = 'Tidak ada gerakan tersisa. Skor: ' + score;
-      overlayPrimary.textContent = 'Coba Lagi';
-      overlaySecondary.style.display = 'none';
+      toast('Tidak bisa dicangkul di sini', 'warn');
     }
-    overlay.classList.add('show');
   }
-
-  function hideOverlay() {
-    overlay.classList.remove('show');
-  }
-
-  // ===== Game flow =====
-  function newGame() {
-    grid = emptyGrid();
-    tiles = [];
-    score = 0;
-    history = [];
-    won = false;
-    keepGoing = false;
-    gameOver = false;
-    nextId = 1;
-    addRandomTile();
-    addRandomTile();
-    keepGoingBtn.style.display = 'none';
-    hideOverlay();
-    render();
-    save();
-  }
-
-  function undo() {
-    if (!history.length) return;
-    const s = history.pop();
-    restoreSnapshot(s);
-    gameOver = false;
-    hideOverlay();
-    render();
-    save();
-  }
-
-  function keepGoingFn() {
-    keepGoing = true;
-    hideOverlay();
-    keepGoingBtn.style.display = 'none';
-    save();
-  }
-
-  function save() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        grid, tiles, score, nextId, won, keepGoing, gameOver
-      }));
-    } catch (e) {}
-  }
-
-  function load() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return false;
-      const s = JSON.parse(raw);
-      if (!s || !s.grid) return false;
-      grid = s.grid;
-      tiles = s.tiles || [];
-      score = s.score || 0;
-      nextId = s.nextId || 1;
-      won = !!s.won;
-      keepGoing = !!s.keepGoing;
-      gameOver = !!s.gameOver;
-      history = [];
-      return tiles.length > 0;
-    } catch (e) { return false; }
-  }
-
-  // ===== Input =====
-  const keyMap = {
-    ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down',
-    a: 'left', A: 'left', d: 'right', D: 'right',
-    w: 'up', W: 'up', s: 'down', S: 'down',
-    h: 'left', l: 'right', k: 'up', j: 'down',
-  };
-  window.addEventListener('keydown', (e) => {
-    if (e.metaKey || e.ctrlKey) return;
-    if (e.key === 'u' || e.key === 'U') { e.preventDefault(); undo(); return; }
-    if (e.key === 'r' || e.key === 'R') { e.preventDefault(); newGame(); return; }
-    const dir = keyMap[e.key];
-    if (dir) {
-      e.preventDefault();
-      move(dir);
+  else if (selectedTool === 'seeds') {
+    if (tile === T.TILLED || tile === T.WATERED) {
+      if ((player.seeds[selectedSeed] ?? 0) > 0) {
+        if (cropMap[fy][fx]) { toast('Sudah ada tanaman di sini', 'warn'); return; }
+        player.seeds[selectedSeed]--;
+        cropMap[fy][fx] = {
+          type: selectedSeed,
+          stage: 0,             // 0=seed, 1=sprout, 2=mid, 3=mature
+          growthDays: 0,
+          wateredToday: (tile === T.WATERED),
+        };
+        toast(`Ditanam: ${CROPS[selectedSeed].name}`, 'info');
+        renderToolbar(); updateHUD();
+        save();
+      } else {
+        toast(`Benih ${CROPS[selectedSeed].name} habis! Beli di toko.`, 'warn');
+      }
+    } else {
+      toast('Cangkul dulu tanahnya', 'warn');
     }
-  }, { passive: false });
+  }
+  else if (selectedTool === 'water') {
+    if (tile === T.WATER) {
+      player.water = player.maxWater;
+      toast('Penyiram penuh!', 'info');
+      renderToolbar(); updateHUD();
+      return;
+    }
+    if (player.water <= 0) { toast('Penyiram kosong! Isi di kolam.', 'warn'); return; }
+    if (tile === T.TILLED) {
+      map[fy][fx] = T.WATERED;
+      if (cropMap[fy][fx]) cropMap[fy][fx].wateredToday = true;
+      player.water--;
+      spawnParticles(fx*TILE+TILE/2, fy*TILE+TILE/2, '#5ab0ff', 5);
+      renderToolbar(); updateHUD();
+      save();
+    } else if (tile === T.WATERED) {
+      if (cropMap[fy][fx]) {
+        cropMap[fy][fx].wateredToday = true;
+        player.water--;
+        spawnParticles(fx*TILE+TILE/2, fy*TILE+TILE/2, '#5ab0ff', 5);
+        renderToolbar(); updateHUD();
+        save();
+      } else {
+        toast('Sudah basah', 'warn');
+      }
+    } else {
+      toast('Cangkul dulu tanahnya', 'warn');
+    }
+  }
+  else if (selectedTool === 'sickle') {
+    const crop = cropMap[fy][fx];
+    if (crop && crop.stage >= 3) {
+      player.inventory[crop.type] = (player.inventory[crop.type] || 0) + 1;
+      toast(`Dipanen: ${CROPS[crop.type].name} (+1)`, 'gold');
+      cropMap[fy][fx] = null;
+      map[fy][fx] = T.TILLED;
+      spawnParticles(fx*TILE+TILE/2, fy*TILE+TILE/2, CROPS[crop.type].color, 8);
+      renderToolbar(); updateHUD();
+      save();
+    } else if (crop) {
+      toast('Belum matang', 'warn');
+    } else {
+      toast('Tidak ada yang dipanen', 'warn');
+    }
+  }
+  else if (selectedTool === 'axe') {
+    if (tile === T.TREE) {
+      map[fy][fx] = T.GRASS;
+      toast('Pohon ditebang 🪵', 'info');
+      spawnParticles(fx*TILE+TILE/2, fy*TILE+TILE/2, '#5a3a1a', 8);
+      save();
+    } else {
+      toast('Tidak bisa ditebang', 'warn');
+    }
+  }
+}
 
-  // Touch / swipe
-  let touchStart = null;
-  const boardEl = document.getElementById('boardWrap');
-  boardEl.addEventListener('touchstart', (e) => {
-    if (e.touches.length !== 1) return;
-    const t = e.touches[0];
-    touchStart = { x: t.clientX, y: t.clientY };
-  }, { passive: true });
-  boardEl.addEventListener('touchmove', (e) => {
-    if (touchStart) e.preventDefault();
-  }, { passive: false });
-  boardEl.addEventListener('touchend', (e) => {
-    if (!touchStart) return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - touchStart.x;
-    const dy = t.clientY - touchStart.y;
-    touchStart = null;
-    const absX = Math.abs(dx), absY = Math.abs(dy);
-    const threshold = 24;
-    if (Math.max(absX, absY) < threshold) return;
-    if (absX > absY) move(dx > 0 ? 'right' : 'left');
-    else move(dy > 0 ? 'down' : 'up');
-  });
-
-  // Mouse drag (desktop fallback for swipe-like feel)
-  let mouseStart = null;
-  boardEl.addEventListener('mousedown', (e) => {
-    mouseStart = { x: e.clientX, y: e.clientY };
-  });
-  window.addEventListener('mouseup', (e) => {
-    if (!mouseStart) return;
-    const dx = e.clientX - mouseStart.x;
-    const dy = e.clientY - mouseStart.y;
-    mouseStart = null;
-    const absX = Math.abs(dx), absY = Math.abs(dy);
-    const threshold = 40;
-    if (Math.max(absX, absY) < threshold) return;
-    if (absX > absY) move(dx > 0 ? 'right' : 'left');
-    else move(dy > 0 ? 'down' : 'up');
-  });
-
-  // Buttons
-  newGameBtn.addEventListener('click', newGame);
-  undoBtn.addEventListener('click', undo);
-  keepGoingBtn.addEventListener('click', keepGoingFn);
-  overlayPrimary.addEventListener('click', newGame);
-  overlaySecondary.addEventListener('click', keepGoingFn);
-
-  // Resize -> re-render positions
-  let rt;
-  window.addEventListener('resize', () => {
-    clearTimeout(rt);
-    rt = setTimeout(renderTiles, 60);
-  });
-
-  // ===== Init =====
-  if (!load()) {
-    newGame();
+function tryOpenShop() {
+  if (nearbyAction && nearbyAction.type === 'shop') openShop();
+  else toast('Pergi ke toko dulu (bangunan utara)', 'warn');
+}
+function trySleep() {
+  if (nearbyAction && nearbyAction.type === 'sleep') {
+    // Sleep: advance day
+    sleepTransition = 1;
+    setTimeout(() => {
+      advanceDay();
+      sleepTransition = 0;
+    }, 500);
   } else {
-    render();
-    if (gameOver) showOverlay('lose');
-    else if (won && !keepGoing) showOverlay('win');
+    toast('Pergi ke rumah untuk tidur', 'warn');
+  }
+}
+
+function advanceDay() {
+  day++;
+  seasonDay++;
+  if (seasonDay > 28) {
+    seasonDay = 1;
+    season = nextSeason(season);
+  }
+  timeOfDay = 6 * 60;
+  player.energy = 100;
+  // Grow crops
+  let grown = 0;
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      const c = cropMap[y][x];
+      if (!c) continue;
+      if (c.wateredToday && c.stage < 3) {
+        c.growthDays++;
+        const need = CROPS[c.type].days;
+        const stage = Math.min(3, Math.floor(c.growthDays / need * 3) + (c.growthDays >= need ? 0 : 0));
+        if (c.growthDays >= need) c.stage = 3;
+        else c.stage = Math.min(2, Math.floor(c.growthDays / need * 3));
+        if (c.stage === 3) grown++;
+        c.wateredToday = false;
+      } else {
+        // Not watered - wilt (skip growth day, slight chance to die if multiple days missed)
+        c.wateredToday = false;
+      }
+      // Reset watered tile back to tilled (watered only lasts 1 day)
+      if (map[y][x] === T.WATERED) map[y][x] = T.TILLED;
+    }
+  }
+  player.water = player.maxWater;
+  toast(`🌅 Hari ${day} — ${seasonLabel(season)}. ${grown > 0 ? grown + ' tanaman matang!' : ''}`, 'info');
+  updateHUD();
+  renderToolbar();
+  save();
+}
+function nextSeason(s) {
+  const order = ['spring','summer','fall','winter'];
+  return order[(order.indexOf(s) + 1) % 4];
+}
+function seasonLabel(s) {
+  return { spring:'Semi', summer:'Panas', fall:'Gugur', winter:'Dingin' }[s];
+}
+function seasonIcon(s) {
+  return { spring:'🌱', summer:'☀️', fall:'🍂', winter:'❄️' }[s];
+}
+
+// ---------- Shop ----------
+function openShop() {
+  menuOpen = 'shop';
+  const panel = document.getElementById('menu-panel');
+  let html = `<h2>🛒 Toko Benih Harvest Vale</h2>
+    <div class="subtitle">Beli benih & jual hasil panen. Emasmu: <strong style="color:#ffd54a">${player.gold}g</strong></div>
+    <div class="menu-grid">`;
+  // Buy seeds
+  for (const key of SEED_LIST) {
+    const c = CROPS[key];
+    const owned = player.seeds[key] || 0;
+    html += `<div class="menu-item" data-action="buy" data-seed="${key}">
+      <div class="emoji">${c.icon}</div>
+      <div class="info">
+        <div class="name">Benih ${c.name}</div>
+        <div class="meta">Tumbuh ${c.days} hari · Jual ${c.sell}g</div>
+        <div class="qty">Dimiliki: ${owned}</div>
+      </div>
+      <div class="price buy">${c.seedCost}g</div>
+    </div>`;
+  }
+  // Sell harvested
+  for (const key of SEED_LIST) {
+    const c = CROPS[key];
+    const have = player.inventory[key] || 0;
+    const disabled = have <= 0 ? ' disabled' : '';
+    html += `<div class="menu-item${disabled ? ' disabled' : ''}" data-action="sell" data-seed="${key}">
+      <div class="emoji">${c.icon}</div>
+      <div class="info">
+        <div class="name">${c.name}</div>
+        <div class="meta">Jual hasil panen</div>
+        <div class="qty">Stok: ${have}</div>
+      </div>
+      <div class="price sell">${c.sell}g</div>
+    </div>`;
+  }
+  html += `</div>
+    <button class="menu-close" id="shop-close">Tutup (Esc)</button>`;
+  panel.innerHTML = html;
+  document.getElementById('menu').classList.add('show');
+  panel.querySelectorAll('.menu-item').forEach(el => {
+    el.addEventListener('click', () => {
+      if (el.classList.contains('disabled')) return;
+      const action = el.dataset.action;
+      const seed = el.dataset.seed;
+      if (action === 'buy') {
+        const cost = CROPS[seed].seedCost;
+        if (player.gold >= cost) {
+          player.gold -= cost;
+          player.seeds[seed] = (player.seeds[seed] || 0) + 1;
+          toast(`Dibeli: Benih ${CROPS[seed].name} (-${cost}g)`, 'gold');
+          updateHUD(); renderToolbar();
+          openShop(); // refresh
+          save();
+        } else {
+          toast('Emas tidak cukup!', 'warn');
+        }
+      } else if (action === 'sell') {
+        if ((player.inventory[seed] || 0) > 0) {
+          player.inventory[seed]--;
+          player.gold += CROPS[seed].sell;
+          toast(`Terjual: ${CROPS[seed].name} (+${CROPS[seed].sell}g)`, 'gold');
+          updateHUD(); renderToolbar();
+          openShop();
+          save();
+        }
+      }
+    });
+  });
+  document.getElementById('shop-close').addEventListener('click', closeMenu);
+}
+function closeMenu() {
+  menuOpen = null;
+  document.getElementById('menu').classList.remove('show');
+}
+
+// ---------- Particles ----------
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x, y,
+      vx: (Math.random() - 0.5) * 3,
+      vy: -Math.random() * 3 - 1,
+      life: 1,
+      color,
+      size: 2 + Math.random() * 3,
+    });
+  }
+}
+function updateParticles(dt) {
+  for (const p of particles) {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.15;
+    p.life -= dt * 1.5;
+  }
+  particles = particles.filter(p => p.life > 0);
+}
+
+// ---------- Movement ----------
+function updatePlayer(dt) {
+  if (dialogActive || menuOpen) { player.moving = false; return; }
+  let dx = 0, dy = 0;
+  if (keys['w'] || keys['arrowup'] || mobileMove.up) dy -= 1;
+  if (keys['s'] || keys['arrowdown'] || mobileMove.down) dy += 1;
+  if (keys['a'] || keys['arrowleft'] || mobileMove.left) dx -= 1;
+  if (keys['d'] || keys['arrowright'] || mobileMove.right) dx += 1;
+  if (dx !== 0 && dy !== 0) { dx *= 0.707; dy *= 0.707; }
+
+  if (dx !== 0 || dy !== 0) {
+    if (Math.abs(dx) > Math.abs(dy)) player.dir = dx > 0 ? 'right' : 'left';
+    else player.dir = dy > 0 ? 'down' : 'up';
+    const speed = PLAYER_SPEED * (dt * 60);
+    const newX = player.x + dx * speed;
+    const newY = player.y + dy * speed;
+    // Collision check (corners)
+    const half = TILE * 0.35;
+    const checkPoints = [
+      [newX - half, newY - half],
+      [newX + half, newY - half],
+      [newX - half, newY + half],
+      [newX + half, newY + half],
+    ];
+    let blocked = false;
+    for (const [cx, cy] of checkPoints) {
+      const tx = Math.floor(cx / TILE);
+      const ty = Math.floor(cy / TILE);
+      if (!isWalkable(tx, ty)) { blocked = true; break; }
+    }
+    if (!blocked) {
+      player.x = newX;
+      player.y = newY;
+    }
+    player.moving = true;
+    player.walkTime += dt;
+    player.walkFrame = Math.floor(player.walkTime * 8) % 4;
+  } else {
+    player.moving = false;
+    player.walkFrame = 0;
   }
 
-  // Repo link (set by deploy script)
-  const repoLink = document.getElementById('repoLink');
-  if (repoLink && window.GAME_REPO_URL) {
-    repoLink.href = window.GAME_REPO_URL;
-  } else if (repoLink) {
-    repoLink.parentElement.style.display = 'none';
+  // Clamp to map
+  player.x = Math.max(TILE, Math.min((MAP_W-2) * TILE, player.x));
+  player.y = Math.max(TILE, Math.min((MAP_H-2) * TILE, player.y));
+}
+
+function updateNearbyAction() {
+  nearbyAction = null;
+  // Check shop door proximity
+  const shopX = 30, shopY = 4, shopW = 7, shopH = 5;
+  const shopDoorX = (shopX + Math.floor(shopW/2)) * TILE + TILE/2;
+  const shopDoorY = (shopY + shopH - 1) * TILE + TILE/2;
+  if (Math.hypot(player.x - shopDoorX, player.y - shopDoorY) < TILE * 2.2) {
+    nearbyAction = { type: 'shop' };
   }
-})();
+  // House door proximity
+  const houseX = 4, houseY = 22, houseW = 7, houseH = 5;
+  const houseDoorX = (houseX + Math.floor(houseW/2)) * TILE + TILE/2;
+  const houseDoorY = (houseY + houseH - 1) * TILE + TILE/2;
+  if (Math.hypot(player.x - houseDoorX, player.y - houseDoorY) < TILE * 2.2) {
+    nearbyAction = { type: 'sleep' };
+  }
+  // NPC proximity
+  for (const n of npcs) {
+    if (Math.hypot(player.x - (n.x + TILE/2), player.y - (n.y + TILE/2)) < TILE * 1.8) {
+      nearbyAction = { type: 'npc', id: n.id };
+      break;
+    }
+  }
+}
+
+// ---------- Time ----------
+function updateTime(dt) {
+  if (dialogActive || menuOpen) return;
+  // 4 real minutes = 18 game hours (06:00 -> 00:00) -> 1 hour per ~13.3s
+  timeOfDay += dt * (18 * 60 / (DAY_LENGTH_MS / 1000)); // minutes per second
+  if (timeOfDay >= 24 * 60) {
+    // Force sleep / next day
+    timeOfDay = 6 * 60;
+    advanceDay();
+  }
+}
+
+// ---------- Rendering ----------
+function resizeCanvas() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.floor(window.innerWidth * dpr);
+  canvas.height = Math.floor(window.innerHeight * dpr);
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+}
+window.addEventListener('resize', resizeCanvas);
+
+function drawTile(tile, x, y) {
+  const px = x * TILE - camera.x;
+  const py = y * TILE - camera.y;
+  if (px < -TILE || py < -TILE || px > canvas.clientWidth + TILE || py > canvas.clientHeight + TILE) return;
+
+  switch (tile) {
+    case T.GRASS:
+    case T.GRASS2:
+      ctx.fillStyle = tile === T.GRASS ? '#3a6a2a' : '#346024';
+      ctx.fillRect(px, py, TILE, TILE);
+      // grass blades
+      ctx.fillStyle = 'rgba(120, 200, 80, 0.3)';
+      ctx.fillRect(px + 4, py + 6, 2, 4);
+      ctx.fillRect(px + 18, py + 20, 2, 4);
+      ctx.fillRect(px + 24, py + 8, 2, 4);
+      break;
+    case T.FLOWER:
+      ctx.fillStyle = '#3a6a2a';
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.fillStyle = '#ff8ad4';
+      ctx.fillRect(px + 12, py + 12, 8, 8);
+      ctx.fillStyle = '#ffe04a';
+      ctx.fillRect(px + 14, py + 14, 4, 4);
+      break;
+    case T.TILLED:
+      ctx.fillStyle = '#6a4a2a';
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.fillStyle = '#5a3a1a';
+      ctx.fillRect(px, py, TILE, 3);
+      ctx.fillRect(px, py + 15, TILE, 3);
+      ctx.fillRect(px, py + 27, TILE, 3);
+      ctx.fillStyle = '#7a5a3a';
+      for (let i = 0; i < 4; i++) {
+        ctx.fillRect(px + i*8 + 1, py + 4, 4, 8);
+        ctx.fillRect(px + i*8 + 1, py + 18, 4, 8);
+      }
+      break;
+    case T.WATERED:
+      ctx.fillStyle = '#3a2a14';
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.fillStyle = '#4a3a20';
+      ctx.fillRect(px, py, TILE, 3);
+      ctx.fillRect(px, py + 15, TILE, 3);
+      ctx.fillRect(px, py + 27, TILE, 3);
+      ctx.fillStyle = '#5a4530';
+      for (let i = 0; i < 4; i++) {
+        ctx.fillRect(px + i*8 + 1, py + 4, 4, 8);
+        ctx.fillRect(px + i*8 + 1, py + 18, 4, 8);
+      }
+      // wet shine
+      ctx.fillStyle = 'rgba(80, 140, 220, 0.25)';
+      ctx.fillRect(px + 4, py + 8, 6, 2);
+      ctx.fillRect(px + 18, py + 22, 6, 2);
+      break;
+    case T.WATER:
+      ctx.fillStyle = '#2a5a9a';
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.fillStyle = '#3a6aba';
+      ctx.fillRect(px + 2, py + 6, 8, 3);
+      ctx.fillRect(px + 18, py + 14, 8, 3);
+      ctx.fillRect(px + 6, py + 22, 8, 3);
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.fillRect(px + 4, py + 7, 4, 1);
+      ctx.fillRect(px + 20, py + 15, 4, 1);
+      break;
+    case T.SAND:
+      ctx.fillStyle = '#d4c08a';
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.fillStyle = '#c4b07a';
+      ctx.fillRect(px + 6, py + 8, 2, 2);
+      ctx.fillRect(px + 20, py + 18, 2, 2);
+      ctx.fillRect(px + 12, py + 24, 2, 2);
+      break;
+    case T.PATH:
+      ctx.fillStyle = '#8a7a5a';
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.fillStyle = '#7a6a4a';
+      ctx.fillRect(px, py + TILE - 4, TILE, 4);
+      ctx.fillStyle = '#9a8a6a';
+      ctx.fillRect(px + 2, py + 2, 4, 4);
+      ctx.fillRect(px + 22, py + 4, 4, 4);
+      ctx.fillRect(px + 14, py + 18, 4, 4);
+      break;
+    case T.FLOOR:
+      ctx.fillStyle = '#5a3a2a';
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.fillStyle = '#4a2a1a';
+      ctx.fillRect(px, py, TILE, 2);
+      ctx.fillRect(px, py + TILE - 2, TILE, 2);
+      ctx.fillRect(px + TILE/2 - 1, py, 2, TILE);
+      break;
+    case T.WALL:
+      ctx.fillStyle = '#6a3a2a';
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.fillStyle = '#5a2a1a';
+      ctx.fillRect(px, py, TILE, 6);
+      ctx.fillStyle = '#8a5a3a';
+      ctx.fillRect(px + 4, py + 4, TILE - 8, 4);
+      // roof
+      ctx.fillStyle = '#a04a2a';
+      ctx.fillRect(px, py - TILE * 0.0, TILE, 4);
+      break;
+    case T.SHOP_FLOOR:
+      ctx.fillStyle = '#4a3a2a';
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.fillStyle = '#3a2a1a';
+      ctx.fillRect(px + 2, py + 2, 6, 6);
+      ctx.fillRect(px + 22, py + 22, 6, 6);
+      break;
+    case T.SHOP_WALL:
+      ctx.fillStyle = '#7a5a3a';
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.fillStyle = '#5a3a2a';
+      ctx.fillRect(px, py, TILE, 6);
+      ctx.fillStyle = '#9a7a5a';
+      ctx.fillRect(px + 4, py + 8, 4, 12);
+      ctx.fillRect(px + 24, py + 8, 4, 12);
+      break;
+    case T.TREE:
+      // grass base
+      ctx.fillStyle = '#3a6a2a';
+      ctx.fillRect(px, py, TILE, TILE);
+      // trunk
+      ctx.fillStyle = '#5a3a1a';
+      ctx.fillRect(px + 12, py + 18, 8, 14);
+      // leaves (circles approximated with rects)
+      ctx.fillStyle = '#2a5a1a';
+      ctx.fillRect(px + 2, py + 0, TILE - 4, 22);
+      ctx.fillStyle = '#3a7a2a';
+      ctx.fillRect(px + 4, py + 2, 10, 12);
+      ctx.fillRect(px + 18, py + 4, 10, 12);
+      ctx.fillStyle = '#4a8a3a';
+      ctx.fillRect(px + 8, py + 4, 6, 6);
+      ctx.fillRect(px + 22, py + 8, 6, 6);
+      break;
+    case T.BUSH:
+      ctx.fillStyle = '#3a6a2a';
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.fillStyle = '#2a5a1a';
+      ctx.fillRect(px + 6, py + 10, 20, 18);
+      ctx.fillStyle = '#3a7a2a';
+      ctx.fillRect(px + 8, py + 12, 6, 6);
+      ctx.fillRect(px + 18, py + 16, 6, 6);
+      // berry
+      ctx.fillStyle = '#e34a3a';
+      ctx.fillRect(px + 14, py + 14, 3, 3);
+      ctx.fillRect(px + 22, py + 20, 3, 3);
+      break;
+    case T.FENCE:
+      ctx.fillStyle = '#3a6a2a';
+      ctx.fillRect(px, py, TILE, TILE);
+      ctx.fillStyle = '#8a6a3a';
+      ctx.fillRect(px + 4, py + 6, 4, 22);
+      ctx.fillRect(px + 24, py + 6, 4, 22);
+      ctx.fillRect(px + 2, py + 12, 28, 4);
+      ctx.fillRect(px + 2, py + 22, 28, 4);
+      break;
+    default:
+      ctx.fillStyle = '#3a6a2a';
+      ctx.fillRect(px, py, TILE, TILE);
+  }
+}
+
+function drawCrop(crop, x, y) {
+  const px = x * TILE - camera.x;
+  const py = y * TILE - camera.y;
+  const c = CROPS[crop.type];
+  const cx = px + TILE/2;
+  const baseY = py + TILE - 4;
+  if (crop.stage === 0) {
+    // seed
+    ctx.fillStyle = '#3a2a14';
+    ctx.fillRect(cx - 3, baseY - 4, 6, 4);
+    ctx.fillStyle = c.color;
+    ctx.fillRect(cx - 2, baseY - 5, 4, 2);
+  } else if (crop.stage === 1) {
+    // sprout
+    ctx.fillStyle = c.stem;
+    ctx.fillRect(cx - 1, baseY - 8, 2, 8);
+    ctx.fillRect(cx - 4, baseY - 8, 3, 3);
+    ctx.fillRect(cx + 1, baseY - 8, 3, 3);
+  } else if (crop.stage === 2) {
+    // mid
+    ctx.fillStyle = c.stem;
+    ctx.fillRect(cx - 1, baseY - 14, 2, 14);
+    ctx.fillRect(cx - 6, baseY - 12, 4, 4);
+    ctx.fillRect(cx + 2, baseY - 14, 4, 4);
+    ctx.fillRect(cx - 4, baseY - 16, 3, 3);
+    ctx.fillRect(cx + 1, baseY - 18, 3, 3);
+  } else {
+    // mature
+    ctx.fillStyle = c.stem;
+    ctx.fillRect(cx - 1, baseY - 18, 2, 18);
+    ctx.fillRect(cx - 6, baseY - 14, 4, 6);
+    ctx.fillRect(cx + 2, baseY - 16, 4, 6);
+    // fruit
+    ctx.fillStyle = c.color;
+    ctx.fillRect(cx - 5, baseY - 22, 5, 5);
+    ctx.fillRect(cx + 1, baseY - 24, 5, 5);
+    ctx.fillRect(cx - 2, baseY - 26, 5, 5);
+    // sparkle indicator
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(px + TILE - 8, py + 2, 2, 2);
+    ctx.fillRect(px + TILE - 6, py + 4, 2, 2);
+    ctx.fillRect(px + TILE - 10, py + 4, 2, 2);
+  }
+  if (!crop.wateredToday && crop.stage < 3) {
+    // wilt indicator (faded)
+    ctx.fillStyle = 'rgba(200, 100, 60, 0.0)';
+  }
+}
+
+function drawNPC(n) {
+  const px = n.x - camera.x;
+  const py = n.y - camera.y;
+  drawCharacter(px, py, n.dir, n.color, n.hair, 0, n.name);
+}
+
+function drawPlayer() {
+  const px = player.x - camera.x - TILE/2;
+  const py = player.y - camera.y - TILE/2 + 4; // slight offset
+  drawCharacter(px, py, player.dir, '#4a8aff', '#5a3a1a', player.moving ? player.walkFrame : 0);
+}
+
+function drawCharacter(px, py, dir, shirt, hair, frame, name) {
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(px + 8, py + 26, 16, 4);
+  // legs (walk animation)
+  ctx.fillStyle = '#2a1a0a';
+  const legOffset = (frame === 1) ? 1 : (frame === 3) ? -1 : 0;
+  ctx.fillRect(px + 10, py + 22, 4, 6 + legOffset);
+  ctx.fillRect(px + 18, py + 22, 4, 6 - legOffset);
+  // body
+  ctx.fillStyle = shirt;
+  ctx.fillRect(px + 8, py + 12, 16, 12);
+  // arms
+  ctx.fillStyle = shirt;
+  ctx.fillRect(px + 6, py + 14, 4, 8);
+  ctx.fillRect(px + 22, py + 14, 4, 8);
+  // head
+  ctx.fillStyle = '#f4c896';
+  ctx.fillRect(px + 10, py + 4, 12, 10);
+  // hair
+  ctx.fillStyle = hair;
+  ctx.fillRect(px + 9, py + 2, 14, 5);
+  ctx.fillRect(px + 9, py + 4, 3, 6);
+  ctx.fillRect(px + 20, py + 4, 3, 6);
+  // face direction
+  ctx.fillStyle = '#1a1a1a';
+  if (dir === 'down') {
+    ctx.fillRect(px + 13, py + 8, 2, 2);
+    ctx.fillRect(px + 17, py + 8, 2, 2);
+  } else if (dir === 'up') {
+    // hair covers, no eyes
+  } else if (dir === 'left') {
+    ctx.fillRect(px + 12, py + 8, 2, 2);
+  } else if (dir === 'right') {
+    ctx.fillRect(px + 18, py + 8, 2, 2);
+  }
+  // name label
+  if (name) {
+    ctx.font = 'bold 10px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(px + 4, py - 6, 24, 12);
+    ctx.fillStyle = '#ffe04a';
+    ctx.fillText(name, px + 16, py + 3);
+    ctx.textAlign = 'left';
+  }
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    ctx.globalAlpha = Math.max(0, p.life);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x - camera.x, p.y - camera.y, p.size, p.size);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawActionHint() {
+  if (!nearbyAction || dialogActive || menuOpen) return;
+  const px = player.x - camera.x;
+  const py = player.y - camera.y - 30;
+  let label = '';
+  if (nearbyAction.type === 'shop') label = '🛒 Toko (B)';
+  else if (nearbyAction.type === 'sleep') label = '🛏️ Tidur (T)';
+  else if (nearbyAction.type === 'npc') label = '💬 Bicara (E)';
+  ctx.font = 'bold 11px system-ui';
+  const w = ctx.measureText(label).width + 14;
+  ctx.fillStyle = 'rgba(0,0,0,0.8)';
+  ctx.fillRect(px - w/2, py - 12, w, 16);
+  ctx.fillStyle = '#ffe04a';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, px, py);
+  ctx.textAlign = 'left';
+}
+
+function drawToolCursor() {
+  if (dialogActive || menuOpen) return;
+  const { fx, fy } = getFacingTile();
+  if (fx < 0 || fy < 0 || fx >= MAP_W || fy >= MAP_H) return;
+  const px = fx * TILE - camera.x;
+  const py = fy * TILE - camera.y;
+  ctx.strokeStyle = 'rgba(255, 224, 74, 0.8)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(px + 1, py + 1, TILE - 2, TILE - 2);
+  ctx.lineWidth = 1;
+}
+
+function drawSkyOverlay() {
+  // Dim screen at night based on time of day
+  const h = timeOfDay / 60;
+  let dim = 0;
+  if (h < 7) dim = (7 - h) / 3 * 0.45;
+  else if (h > 20) dim = (h - 20) / 4 * 0.55;
+  if (dim > 0) {
+    ctx.fillStyle = `rgba(20, 25, 60, ${Math.min(0.55, dim)})`;
+    ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+  }
+}
+
+function drawSleepFade() {
+  if (sleepTransition > 0) {
+    ctx.fillStyle = `rgba(0,0,0,${sleepTransition})`;
+    ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+  }
+}
+
+function render() {
+  const vw = canvas.clientWidth, vh = canvas.clientHeight;
+  ctx.fillStyle = '#2d4a2d';
+  ctx.fillRect(0, 0, vw, vh);
+
+  // Center camera on player
+  camera.x = player.x - vw / 2;
+  camera.y = player.y - vh / 2;
+  // Clamp camera
+  camera.x = Math.max(0, Math.min(MAP_W * TILE - vw, camera.x));
+  camera.y = Math.max(0, Math.min(MAP_H * TILE - vh, camera.y));
+
+  // Visible tile range
+  const startX = Math.max(0, Math.floor(camera.x / TILE));
+  const endX = Math.min(MAP_W - 1, Math.ceil((camera.x + vw) / TILE));
+  const startY = Math.max(0, Math.floor(camera.y / TILE));
+  const endY = Math.min(MAP_H - 1, Math.ceil((camera.y + vh) / TILE));
+
+  // Tiles
+  for (let y = startY; y <= endY; y++) {
+    for (let x = startX; x <= endX; x++) {
+      drawTile(map[y][x], x, y);
+    }
+  }
+  // Crops
+  for (let y = startY; y <= endY; y++) {
+    for (let x = startX; x <= endX; x++) {
+      if (cropMap[y][x]) drawCrop(cropMap[y][x], x, y);
+    }
+  }
+  // NPCs (sorted by Y for depth)
+  const drawables = [];
+  for (const n of npcs) drawables.push({ y: n.y + TILE/2, kind: 'npc', ref: n });
+  drawables.push({ y: player.y, kind: 'player' });
+  drawables.sort((a, b) => a.y - b.y);
+  for (const d of drawables) {
+    if (d.kind === 'npc') drawNPC(d.ref);
+    else drawPlayer();
+  }
+  // Tool cursor
+  drawToolCursor();
+  // Particles
+  drawParticles();
+  // Action hint
+  drawActionHint();
+  // Sky overlay (night)
+  drawSkyOverlay();
+  // Sleep fade
+  drawSleepFade();
+}
+
+// ---------- HUD ----------
+function updateHUD() {
+  document.getElementById('hud-gold').textContent = player.gold;
+  document.getElementById('hud-day').textContent = day;
+  document.getElementById('hud-season').textContent = seasonLabel(season) + ' (' + seasonDay + ')';
+  document.getElementById('hud-season-icon').textContent = seasonIcon(season);
+  const h = Math.floor(timeOfDay / 60);
+  const m = Math.floor(timeOfDay % 60);
+  const timeStr = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  document.getElementById('hud-time').textContent = timeStr;
+  document.getElementById('hud-time-icon').textContent = (h >= 6 && h < 19) ? '☀️' : '🌙';
+}
+
+// ---------- Main loop ----------
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastFrame) / 1000);
+  lastFrame = now;
+  if (gameStarted) {
+    updatePlayer(dt);
+    updateNearbyAction();
+    updateTime(dt);
+    updateParticles(dt);
+    render();
+    updateHUD();
+  }
+  requestAnimationFrame(loop);
+}
+
+// ---------- Init ----------
+function init() {
+  resizeCanvas();
+  generateMap();
+  const loaded = load();
+  if (!loaded) {
+    // first time - show intro
+    renderToolbar();
+    updateHUD();
+    setTimeout(() => {
+      toggleHelp(true);
+    }, 300);
+  } else {
+    renderToolbar();
+    updateHUD();
+  }
+  // Auto-save every 5 sec
+  setInterval(save, 5000);
+  gameStarted = true;
+  // Hide loading
+  setTimeout(() => {
+    document.getElementById('loading').style.display = 'none';
+  }, 400);
+  lastFrame = performance.now();
+  requestAnimationFrame(loop);
+}
+
+window.addEventListener('load', init);
 </script>
 </body>
 </html>
