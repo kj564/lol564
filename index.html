@@ -817,20 +817,23 @@ const INV_SLOTS = 12;
 
 // ===== Inventory Data State (Drag-and-Drop) =====
 // Each slot: null (empty) or {id, name, quantity, assetKey, type}
+// Slots 0-4 are HOTBAR slots (rendered in bottom toolbar).
+// Slots 5-11 are BAG-ONLY storage slots.
 // Synced with player.seeds/inventory so crops & seeds reflect in Bag.
-// Tools (hoe/water/axe/sickle) always present (not consumable).
 function buildInventoryData() {
   return [
+    // Hotbar slots (0-4) — match TOOLS order: hoe, seeds, water, sickle, axe
     { id: 'hoe',       name: 'Cangkul',       quantity: 1, assetKey: 'tool_hoe',     type: 'tool' },
+    { id: 'seeds',     name: 'Benih ' + selectedSeed,  quantity: player.seeds[selectedSeed] ?? 0, assetKey: selectedSeed === 'parsnip' ? 'crop_parsnip' : 'crop_potato', type: 'seed' },
     { id: 'water',     name: 'Penyiram',      quantity: player.water, assetKey: 'tool_water', type: 'tool' },
     { id: 'sickle',    name: 'Sabit',         quantity: 1, assetKey: 'tool_sickle',  type: 'tool' },
     { id: 'axe',       name: 'Kapak',         quantity: 1, assetKey: 'tool_axe',     type: 'tool' },
-    { id: 'parsnip_seed', name: 'Benih Parsnip', quantity: player.seeds.parsnip, assetKey: 'crop_parsnip', type: 'seed' },
-    { id: 'potato_seed',  name: 'Benih Kentang', quantity: player.seeds.potato,  assetKey: 'crop_potato',  type: 'seed' },
+    // Bag-only slots (5-11) — extra seeds, crops, empty
+    { id: 'potato_seed', name: 'Benih Kentang', quantity: player.seeds.potato,  assetKey: 'crop_potato',  type: 'seed' },
     { id: 'parsnip',   name: 'Parsnip',       quantity: player.inventory.parsnip, assetKey: 'crop_parsnip', type: 'crop' },
     { id: 'potato',    name: 'Kentang',       quantity: player.inventory.potato,  assetKey: 'crop_potato',  type: 'crop' },
-    { id: 'tomato',    name: 'Tomat',          quantity: player.inventory.tomato, assetKey: 'crop_potato',  type: 'crop' }, // uses potato sprite as fallback
-    { id: 'corn',      name: 'Jagung',         quantity: player.inventory.corn,   assetKey: 'crop_parsnip', type: 'crop' }, // uses parsnip sprite as fallback
+    { id: 'tomato',    name: 'Tomat',          quantity: player.inventory.tomato, assetKey: 'crop_potato',  type: 'crop' },
+    { id: 'corn',      name: 'Jagung',         quantity: player.inventory.corn,   assetKey: 'crop_parsnip', type: 'crop' },
     null,
     null,
   ];
@@ -1122,8 +1125,8 @@ window.addEventListener('keydown', (e) => {
     isMenuOpen = !isMenuOpen;
     document.getElementById('ui-menu').classList.toggle('open', isMenuOpen);
     if (isMenuOpen) {
-      // Refresh inventory data + render (sync with current game state)
-      inventoryData = buildInventoryData();
+      // Sync quantities from player state (preserve swap positions, update counts only)
+      syncInvQuantities();
       renderInventory();
       renderStatusTab();
       toast('🎒 Menu dibuka — pergerakan di-freeze');
@@ -1159,11 +1162,11 @@ window.addEventListener('keydown', (e) => {
     if (k === 'escape' || k === 'b') closeMenu();
     return;
   }
-  if (k === '1') selectTool('hoe');
-  else if (k === '2') selectTool('seeds');
-  else if (k === '3') selectTool('water');
-  else if (k === '4') selectTool('sickle');
-  else if (k === '5') selectTool('axe');
+  if (k === '1') selectFromHotbar(0);
+  else if (k === '2') selectFromHotbar(1);
+  else if (k === '3') selectFromHotbar(2);
+  else if (k === '4') selectFromHotbar(3);
+  else if (k === '5') selectFromHotbar(4);
   else if (k === ' ' || k === 'e') useToolOrInteract();
   else if (k === 'b') tryOpenShop();
   else if (k === 't') trySleep();
@@ -1222,48 +1225,163 @@ canvas.addEventListener('touchend', (e) => {
 function renderToolbar() {
   const tb = document.getElementById('toolbar');
   tb.innerHTML = '';
-  for (const tool of TOOLS) {
+  // Hotbar renders from inventoryData[0..4] — syncs with Bag swaps.
+  // Keys 1-5 map to these slots. Click slot to select tool.
+  const HOTBAR_KEY = ['1','2','3','4','5'];
+  for (let i = 0; i < 5; i++) {
+    const item = inventoryData[i];
+    const toolId = item ? item.id : null;
     const slot = document.createElement('div');
-    slot.className = 'tool-slot' + (selectedTool === tool.id ? ' active' : '');
-    slot.dataset.tool = tool.id;
+    slot.className = 'tool-slot' + (selectedTool === toolId && toolId ? ' active' : '');
+    slot.dataset.tool = toolId || ('empty' + i);
+    slot.dataset.slotIndex = i;
+    // Empty slot visual
+    if (!item) {
+      slot.innerHTML = `
+        <div class="tool-key">${HOTBAR_KEY[i]}</div>
+        <div class="tool-icon" style="opacity:0.3">—</div>
+      `;
+      slot.addEventListener('click', () => {
+        toast('Slot kosong — drag item dari Bag ke sini', 'warn');
+      });
+      tb.appendChild(slot);
+      continue;
+    }
+    // Count badge
     let count = '';
-    if (tool.id === 'seeds') count = player.seeds[selectedSeed] ?? 0;
-    if (tool.id === 'water') count = `${player.water}/${player.maxWater}`;
+    if (item.id === 'seeds') count = item.quantity;
+    else if (item.id === 'water') count = `${item.quantity}/${player.maxWater}`;
+    else if (item.quantity > 1) count = item.quantity;
     slot.innerHTML = `
-      <div class="tool-key">${tool.key}</div>
-      <div class="tool-icon">${tool.icon}</div>
-      ${count ? `<div class="tool-count">${count}</div>` : ''}
+      <div class="tool-key">${HOTBAR_KEY[i]}</div>
+      <div class="tool-icon"></div>
+      ${count !== '' ? `<div class="tool-count">${count}</div>` : ''}
     `;
-    const toolAsset = TOOL_ASSETS[tool.id] ? getAsset(TOOL_ASSETS[tool.id]) : null;
-    if (TOOL_ASSETS[tool.id]) {
-      // Image loads asynchronously; next toolbar refresh will use the real icon.
-      const iconPath = TOOL_ASSETS[tool.id];
-      const icon = new Image();
-      icon.alt = tool.name;
+    // Render real sprite icon
+    const assetKey = INV_ASSET_KEY_MAP[item.id] || item.assetKey;
+    if (assetKey && invAssets[assetKey]) {
+      const icon = document.createElement('img');
+      icon.alt = item.name;
       icon.width = 22;
       icon.height = 22;
       icon.style.objectFit = 'contain';
-      icon.src = 'assets/' + iconPath;
-      icon.onload = () => {
-        const target = slot.querySelector('.tool-icon');
-        if (target) { target.textContent = ''; target.appendChild(icon); }
-      };
+      icon.style.imageRendering = 'pixelated';
+      icon.src = invAssets[assetKey].src;
+      const target = slot.querySelector('.tool-icon');
+      if (target) target.appendChild(icon);
+    } else {
+      // Fallback: emoji from TOOLS
+      const toolDef = TOOLS.find(t => t.id === item.id);
+      if (toolDef) slot.querySelector('.tool-icon').textContent = toolDef.icon;
     }
+    // Click → select tool (only if it's a usable tool)
     slot.addEventListener('click', () => {
-      selectTool(tool.id);
-      if (tool.id === 'seeds') {
-        // cycle seed if already selected
-        const idx = SEED_LIST.indexOf(selectedSeed);
-        selectedSeed = SEED_LIST[(idx + 1) % SEED_LIST.length];
-        renderToolbar();
+      if (item.id === 'hoe' || item.id === 'seeds' || item.id === 'water' || item.id === 'sickle' || item.id === 'axe') {
+        selectTool(item.id);
+        if (item.id === 'seeds') {
+          // cycle seed type
+          const idx = SEED_LIST.indexOf(selectedSeed);
+          selectedSeed = SEED_LIST[(idx + 1) % SEED_LIST.length];
+          // Update inventoryData seed slot to reflect new selected seed
+          inventoryData[1] = {
+            id: 'seeds',
+            name: 'Benih ' + selectedSeed,
+            quantity: player.seeds[selectedSeed] ?? 0,
+            assetKey: selectedSeed === 'parsnip' ? 'crop_parsnip' : 'crop_potato',
+            type: 'seed',
+          };
+          renderToolbar();
+        }
+      } else {
+        toast(`${item.name} bukan alat yang bisa dipakai`, 'warn');
       }
     });
     tb.appendChild(slot);
   }
 }
+
+// Map tool id → inventory asset key (for hotbar icon rendering)
+const INV_ASSET_KEY_MAP = {
+  hoe: 'tool_hoe',
+  seeds: 'crop_parsnip',  // default, updated by selectedSeed
+  water: 'tool_water',
+  sickle: 'tool_sickle',
+  axe: 'tool_axe',
+};
 function selectTool(id) {
   selectedTool = id;
   renderToolbar();
+}
+
+// Select tool from hotbar slot (key 1-5 or click)
+// Reads inventoryData[slotIndex] — if item is a usable tool, select it.
+function selectFromHotbar(slotIndex) {
+  const item = inventoryData[slotIndex];
+  if (!item) {
+    toast('Slot hotbar kosong', 'warn');
+    return;
+  }
+  const usableTools = ['hoe', 'seeds', 'water', 'sickle', 'axe'];
+  if (!usableTools.includes(item.id)) {
+    toast(`${item.name} bukan alat`, 'warn');
+    return;
+  }
+  selectTool(item.id);
+  if (item.id === 'seeds') {
+    // cycle seed type
+    const idx = SEED_LIST.indexOf(selectedSeed);
+    selectedSeed = SEED_LIST[(idx + 1) % SEED_LIST.length];
+    // Update inventoryData seed slot
+    inventoryData[1] = {
+      id: 'seeds',
+      name: 'Benih ' + selectedSeed,
+      quantity: player.seeds[selectedSeed] ?? 0,
+      assetKey: selectedSeed === 'parsnip' ? 'crop_parsnip' : 'crop_potato',
+      type: 'seed',
+    };
+    renderToolbar();
+  }
+}
+
+// Sync inventory item quantity after farming action.
+// Finds slot by item.id, updates quantity, re-renders hotbar.
+function syncInvItem(id, newQuantity) {
+  for (let i = 0; i < INV_SLOTS; i++) {
+    if (inventoryData[i] && inventoryData[i].id === id) {
+      inventoryData[i].quantity = newQuantity;
+      break;
+    }
+  }
+  renderToolbar();   // refresh hotbar to show new count
+}
+
+// Update quantities in inventoryData from player state WITHOUT rebuilding structure.
+// This preserves user swaps (item positions) while keeping counts in sync.
+// Called when opening Bag or after shop transactions.
+function syncInvQuantities() {
+  for (let i = 0; i < INV_SLOTS; i++) {
+    const item = inventoryData[i];
+    if (!item) continue;
+    if (item.id === 'seeds') {
+      item.quantity = player.seeds[selectedSeed] ?? 0;
+      item.name = 'Benih ' + selectedSeed;
+      item.assetKey = selectedSeed === 'parsnip' ? 'crop_parsnip' : 'crop_potato';
+    } else if (item.id === 'water') {
+      item.quantity = player.water;
+    } else if (item.id === 'parsnip') {
+      item.quantity = player.inventory.parsnip;
+    } else if (item.id === 'potato') {
+      item.quantity = player.inventory.potato;
+    } else if (item.id === 'tomato') {
+      item.quantity = player.inventory.tomato;
+    } else if (item.id === 'corn') {
+      item.quantity = player.inventory.corn;
+    } else if (item.id === 'parsnip_seed') {
+      item.quantity = player.seeds.parsnip;
+    } else if (item.id === 'potato_seed') {
+      item.quantity = player.seeds.potato;
+    }
+  }
 }
 
 // ---------- Dialog ----------
@@ -1360,6 +1478,7 @@ function useToolOrInteract() {
       if ((player.seeds[selectedSeed] ?? 0) > 0) {
         if (cropMap[fy][fx]) { toast('Sudah ada tanaman di sini', 'warn'); return; }
         player.seeds[selectedSeed]--;
+        syncInvItem('seeds', player.seeds[selectedSeed]);   // sync hotbar count
         cropMap[fy][fx] = {
           type: selectedSeed,
           stage: 0,             // 0=seed, 1=sprout, 2=mid, 3=mature
@@ -1379,8 +1498,9 @@ function useToolOrInteract() {
   else if (selectedTool === 'water') {
     if (tile === T.WATER) {
       player.water = player.maxWater;
+      syncInvItem('water', player.water);   // sync hotbar count
       toast('Penyiram penuh!', 'info');
-      renderToolbar(); updateHUD();
+      updateHUD();
       return;
     }
     if (player.water <= 0) { toast('Penyiram kosong! Isi di kolam.', 'warn'); return; }
@@ -1388,15 +1508,17 @@ function useToolOrInteract() {
       map[fy][fx] = T.WATERED;
       if (cropMap[fy][fx]) cropMap[fy][fx].wateredToday = true;
       player.water--;
+      syncInvItem('water', player.water);   // sync hotbar count
       spawnParticles(fx*TILE+TILE/2, fy*TILE+TILE/2, '#5ab0ff', 5);
-      renderToolbar(); updateHUD();
+      updateHUD();
       save();
     } else if (tile === T.WATERED) {
       if (cropMap[fy][fx]) {
         cropMap[fy][fx].wateredToday = true;
         player.water--;
+        syncInvItem('water', player.water);   // sync hotbar count
         spawnParticles(fx*TILE+TILE/2, fy*TILE+TILE/2, '#5ab0ff', 5);
-        renderToolbar(); updateHUD();
+        updateHUD();
         save();
       } else {
         toast('Sudah basah', 'warn');
@@ -1409,6 +1531,7 @@ function useToolOrInteract() {
     const crop = cropMap[fy][fx];
     if (crop && crop.stage >= 3) {
       player.inventory[crop.type] = (player.inventory[crop.type] || 0) + 1;
+      syncInvItem(crop.type, player.inventory[crop.type]);   // sync hotbar/bag count
       toast(`Dipanen: ${CROPS[crop.type].name} (+1)`, 'gold');
       cropMap[fy][fx] = null;
       map[fy][fx] = T.TILLED;
@@ -2462,7 +2585,7 @@ function switchTab(tabName) {
     page.classList.toggle('active', page.dataset.tab === tabName);
   });
   if (tabName === 'bag') {
-    inventoryData = buildInventoryData();
+    syncInvQuantities();   // sync counts, preserve swaps
     renderInventory();
   } else if (tabName === 'status') {
     renderStatusTab();
@@ -2633,6 +2756,7 @@ function handleDrop(e) {
   inventoryData[targetSlot] = inventoryData[sourceSlot];
   inventoryData[sourceSlot] = tmp;
   renderInventory();
+  renderToolbar();   // sync hotbar with swapped inventory (slots 0-4)
   const moved = inventoryData[targetSlot];
   toast(moved ? `🔄 Swapped: ${moved.name} → slot ${targetSlot + 1}` : `🔄 Moved to slot ${targetSlot + 1}`);
   draggedFromSlot = null;
