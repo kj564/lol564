@@ -1551,8 +1551,8 @@ function dropItem(slotIndex) {
     id: item.id,
     name: name,
     assetKey: assetKey,
-    x: PLAYER.x,
-    y: PLAYER.y + 55,    // +55px offset (beyond 38px pickup threshold)
+    x: player.x,
+    y: player.y + 55,    // +55px offset (beyond 38px pickup threshold)
     pickupRadius: 22,
     bobOffset: Math.random() * 6.28,
   };
@@ -1595,10 +1595,11 @@ function checkWorldPickups() {
   if (isMenuOpen || dialogActive || menuOpen) return;
   for (let i = itemsInWorld.length - 1; i >= 0; i--) {
     const item = itemsInWorld[i];
-    const dx = PLAYER.x - item.x;
-    const dy = PLAYER.y - item.y;
+    const dx = player.x - item.x;
+    const dy = player.y - item.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < (PLAYER.radius + item.pickupRadius)) {
+    // pickup threshold: player half-size (16) + item pickupRadius (22) = 38px
+    if (dist < (16 + item.pickupRadius)) {
       // Pickup attempt: stacking + first empty slot
       if (pickupToWorldItem(item)) {
         itemsInWorld.splice(i, 1);  // Destroy from world
@@ -1656,7 +1657,7 @@ function drawWorldItems() {
     ctx.fill();
 
     // Glow halo saat player dekat
-    const dist = Math.hypot(PLAYER.x - item.x, PLAYER.y - item.y);
+    const dist = Math.hypot(player.x - item.x, player.y - item.y);
     if (dist < item.pickupRadius + 30) {
       const intensity = 1 - (dist / (item.pickupRadius + 30));
       ctx.fillStyle = `rgba(255, 213, 74, ${0.2 * intensity})`;
