@@ -877,6 +877,12 @@ const CROPS = {
   carrot:  { name: 'Wortel',    days: 4, sell: 65,  seedCost: 35,  color: '#f28c28', stem: '#5a9a42', icon: '🥕' },
   pumpkin: { name: 'Labu',      days: 7, sell: 190, seedCost: 125, color: '#f28c28', stem: '#4d8a35', icon: '🎃' },
   cabbage: { name: 'Kubis',     days: 5, sell: 110, seedCost: 70,  color: '#80b84a', stem: '#4d8a35', icon: '🥬' },
+  beetroot: { name: 'Bit',       days: 4, sell: 75,  seedCost: 40,  color: '#a83255', stem: '#5a9a42', icon: '🫜' },
+  cauliflower: { name: 'Kembang Kol', days: 6, sell: 145, seedCost: 90, color: '#e7e2c9', stem: '#7ca54a', icon: '🥦' },
+  kale: { name: 'Kale',          days: 4, sell: 90,  seedCost: 55,  color: '#4d9b52', stem: '#39743a', icon: '🥬' },
+  radish: { name: 'Lobak',       days: 3, sell: 55,  seedCost: 30,  color: '#f2d6d9', stem: '#55934a', icon: '🌱' },
+  sunflower: { name: 'Bunga Matahari', days: 7, sell: 175, seedCost: 115, color: '#f8cb38', stem: '#4f8b38', icon: '🌻' },
+  wheat: { name: 'Gandum',       days: 5, sell: 100, seedCost: 65,  color: '#e2b84b', stem: '#6c8d35', icon: '🌾' },
 };
 const SEED_LIST = Object.keys(CROPS);
 
@@ -906,9 +912,15 @@ const CROP_ASSETS = {
   carrot: 'Elements/Crops/carrot',
   pumpkin: 'Elements/Crops/pumpkin',
   cabbage: 'Elements/Crops/cabbage',
+  beetroot: 'Elements/Crops/beetroot',
+  cauliflower: 'Elements/Crops/cauliflower',
+  kale: 'Elements/Crops/kale',
+  radish: 'Elements/Crops/radish',
+  sunflower: 'Elements/Crops/sunflower',
+  wheat: 'Elements/Crops/wheat',
 };
 function getCropIconKey(type) {
-  return ({ parsnip: 'crop_parsnip', potato: 'crop_potato', tomato: 'crop_potato', corn: 'crop_potato', carrot: 'crop_carrot', pumpkin: 'crop_pumpkin', cabbage: 'crop_cabbage' })[type] || 'crop_parsnip';
+  return ({ parsnip: 'crop_parsnip', potato: 'crop_potato', tomato: 'crop_potato', corn: 'crop_wheat', carrot: 'crop_carrot', pumpkin: 'crop_pumpkin', cabbage: 'crop_cabbage', beetroot: 'crop_beetroot', cauliflower: 'crop_cauliflower', kale: 'crop_kale', radish: 'crop_radish', sunflower: 'crop_sunflower', wheat: 'crop_wheat' })[type] || 'crop_parsnip';
 }
 const TOOL_ASSETS = {
   hoe: 'UI/pickaxe.png',
@@ -930,8 +942,8 @@ let player = {
   moving: false,
   gold: 500,
   energy: 100,
-  inventory: { parsnip: 0, potato: 0, tomato: 0, corn: 0, carrot: 0, pumpkin: 0, cabbage: 0 },
-  seeds: { parsnip: 5, potato: 2, tomato: 1, corn: 0, carrot: 0, pumpkin: 0, cabbage: 0 },
+  inventory: { parsnip: 0, potato: 0, tomato: 0, corn: 0, carrot: 0, pumpkin: 0, cabbage: 0, beetroot: 0, cauliflower: 0, kale: 0, radish: 0, sunflower: 0, wheat: 0 },
+  seeds: { parsnip: 5, potato: 2, tomato: 1, corn: 0, carrot: 0, pumpkin: 0, cabbage: 0, beetroot: 0, cauliflower: 0, kale: 0, radish: 0, sunflower: 0, wheat: 0 },
   water: 20, maxWater: 20,
 };
 let selectedTool = 'hoe';
@@ -1012,7 +1024,7 @@ const AudioManager = {
   stopBGM() { if (this.bgmAudio) { this.bgmAudio.pause(); this.bgmAudio = null; } },
 };
 let activeTab = 'status'; // 'status' | 'bag' | 'map'
-const INV_SLOTS = 12;
+const INV_SLOTS = 18;
 
 // ===== Inventory Data State (Drag-and-Drop) =====
 // Each slot: null (empty) or {id, name, quantity, assetKey, type}
@@ -1027,7 +1039,7 @@ function buildInventoryData() {
     { id: 'water',     name: 'Penyiram',      quantity: player.water, assetKey: 'tool_water', type: 'tool' },
     { id: 'sickle',    name: 'Sabit',         quantity: 1, assetKey: 'tool_sickle',  type: 'tool' },
     { id: 'axe',       name: 'Kapak',         quantity: 1, assetKey: 'tool_axe',     type: 'tool' },
-    // Bag-only slots (5-11) — extra seeds, crops, empty
+    // Bag-only slots (5-17) — crop collection, each with a real asset icon
     { id: 'cabbage',    name: 'Kubis',          quantity: player.inventory.cabbage || 0, assetKey: 'crop_cabbage', type: 'crop' },
     { id: 'parsnip',   name: 'Parsnip',       quantity: player.inventory.parsnip, assetKey: 'crop_parsnip', type: 'crop' },
     { id: 'potato',    name: 'Kentang',       quantity: player.inventory.potato,  assetKey: 'crop_potato',  type: 'crop' },
@@ -1035,6 +1047,12 @@ function buildInventoryData() {
     { id: 'corn',      name: 'Jagung',         quantity: player.inventory.corn,   assetKey: 'crop_parsnip', type: 'crop' },
     { id: 'carrot',    name: 'Wortel',          quantity: player.inventory.carrot || 0, assetKey: 'crop_carrot', type: 'crop' },
     { id: 'pumpkin',   name: 'Labu',            quantity: player.inventory.pumpkin || 0, assetKey: 'crop_pumpkin', type: 'crop' },
+    { id: 'beetroot', name: 'Bit', quantity: player.inventory.beetroot || 0, assetKey: 'crop_beetroot', type: 'crop' },
+    { id: 'cauliflower', name: 'Kembang Kol', quantity: player.inventory.cauliflower || 0, assetKey: 'crop_cauliflower', type: 'crop' },
+    { id: 'kale', name: 'Kale', quantity: player.inventory.kale || 0, assetKey: 'crop_kale', type: 'crop' },
+    { id: 'radish', name: 'Lobak', quantity: player.inventory.radish || 0, assetKey: 'crop_radish', type: 'crop' },
+    { id: 'sunflower', name: 'Bunga Matahari', quantity: player.inventory.sunflower || 0, assetKey: 'crop_sunflower', type: 'crop' },
+    { id: 'wheat', name: 'Gandum', quantity: player.inventory.wheat || 0, assetKey: 'crop_wheat', type: 'crop' },
   ];
 }
 let inventoryData = buildInventoryData();
@@ -1050,6 +1068,12 @@ const INV_ASSET_PATHS = {
   crop_carrot:   'Elements/Crops/carrot_05.png',
   crop_pumpkin:  'Elements/Crops/pumpkin_05.png',
   crop_cabbage:  'Elements/Crops/cabbage_05.png',
+  crop_beetroot: 'Elements/Crops/beetroot_05.png',
+  crop_cauliflower: 'Elements/Crops/cauliflower_05.png',
+  crop_kale: 'Elements/Crops/kale_05.png',
+  crop_radish: 'Elements/Crops/radish_05.png',
+  crop_sunflower: 'Elements/Crops/sunflower_05.png',
+  crop_wheat: 'Elements/Crops/wheat_05.png',
   food_egg:      'Elements/Crops/egg.png',
   food_fish:     'Elements/Crops/fish.png',
   food_milk:     'Elements/Crops/milk.png',
@@ -1771,7 +1795,7 @@ function syncInvQuantities() {
     if (item.id === 'seeds') {
       item.quantity = player.seeds[selectedSeed] ?? 0;
       item.name = 'Benih ' + selectedSeed;
-      item.assetKey = selectedSeed === 'parsnip' ? 'crop_parsnip' : 'crop_potato';
+      item.assetKey = getCropIconKey(selectedSeed);
     } else if (item.id === 'water') {
       item.quantity = player.water;
     } else if (item.id === 'parsnip') {
@@ -1786,8 +1810,8 @@ function syncInvQuantities() {
       item.quantity = player.inventory.carrot || 0;
     } else if (item.id === 'pumpkin') {
       item.quantity = player.inventory.pumpkin || 0;
-    } else if (item.id === 'cabbage') {
-      item.quantity = player.inventory.cabbage || 0;
+    } else if (item.id === 'cabbage' || ['beetroot','cauliflower','kale','radish','sunflower','wheat'].includes(item.id)) {
+      item.quantity = player.inventory[item.id] || 0;
     } else if (item.id === 'parsnip_seed') {
       item.quantity = player.seeds.parsnip;
     } else if (item.id === 'potato_seed') {
