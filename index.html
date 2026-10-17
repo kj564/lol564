@@ -2027,13 +2027,20 @@ const DROP_ITEM_DB = {
   axe:         { name: 'Kapak',       assetKey: 'tool_axe' },
   pickaxe:     { name: 'Pickaxe',     assetKey: 'tool_pickaxe' },
   seeds:       { name: 'Benih',       assetKey: 'crop_parsnip' },
+  // All 13 crop types
   parsnip:     { name: 'Parsnip',     assetKey: 'crop_parsnip' },
   potato:      { name: 'Kentang',     assetKey: 'crop_potato' },
   carrot:      { name: 'Wortel',      assetKey: 'crop_carrot' },
-  tomato:      { name: 'Tomat',       assetKey: 'crop_potato' },
-  corn:        { name: 'Jagung',      assetKey: 'crop_parsnip' },
+  tomato:      { name: 'Tomat',       assetKey: 'crop_potato' },     // fallback
+  corn:        { name: 'Jagung',      assetKey: 'crop_parsnip' },    // fallback
   pumpkin:     { name: 'Labu',        assetKey: 'crop_pumpkin' },
   cabbage:     { name: 'Kubis',      assetKey: 'crop_cabbage' },
+  beetroot:    { name: 'Bit',         assetKey: 'crop_beetroot' },
+  cauliflower: { name: 'Bunga Kol',   assetKey: 'crop_cauliflower' },
+  kale:        { name: 'Kale',        assetKey: 'crop_kale' },
+  radish:      { name: 'Lobak',       assetKey: 'crop_radish' },
+  sunflower:   { name: 'Bunga Matahari', assetKey: 'crop_sunflower' },
+  wheat:       { name: 'Gandum',      assetKey: 'crop_wheat' },
 };
 
 // ===== World Items: Pickup Check (Euclidean distance) =====
@@ -2325,12 +2332,21 @@ const POPUP_ASSET_PATHS = {
   sickle: INV_ASSET_PATHS.tool_sickle,
   axe:    INV_ASSET_PATHS.tool_axe,
   pickaxe:INV_ASSET_PATHS.tool_pickaxe,
-  // Crops (harvested)
-  parsnip: INV_ASSET_PATHS.crop_parsnip,
-  potato:  INV_ASSET_PATHS.crop_potato,
-  carrot:  INV_ASSET_PATHS.crop_carrot,
-  pumpkin: INV_ASSET_PATHS.crop_pumpkin,
-  cabbage: INV_ASSET_PATHS.crop_cabbage,
+  // Crops (harvested) — all 13 crop types
+  parsnip:    INV_ASSET_PATHS.crop_parsnip,
+  potato:     INV_ASSET_PATHS.crop_potato,
+  carrot:     INV_ASSET_PATHS.crop_carrot,
+  pumpkin:    INV_ASSET_PATHS.crop_pumpkin,
+  cabbage:    INV_ASSET_PATHS.crop_cabbage,
+  beetroot:   INV_ASSET_PATHS.crop_beetroot,
+  cauliflower:INV_ASSET_PATHS.crop_cauliflower,
+  kale:       INV_ASSET_PATHS.crop_kale,
+  radish:     INV_ASSET_PATHS.crop_radish,
+  sunflower:  INV_ASSET_PATHS.crop_sunflower,
+  wheat:      INV_ASSET_PATHS.crop_wheat,
+  // tomato + corn use fallback (no dedicated sprite in some packs)
+  tomato:  INV_ASSET_PATHS.crop_potato,    // fallback
+  corn:    INV_ASSET_PATHS.crop_parsnip,   // fallback
   // Food
   egg:  INV_ASSET_PATHS.food_egg,
   fish: INV_ASSET_PATHS.food_fish,
@@ -2350,19 +2366,28 @@ function showPopup(assetKey, name, actionType, countText) {
 
   // Map logical key → invAssets key (which matches INV_ASSET_PATHS keys)
   const ASSET_KEY_MAP = {
-    parsnip: 'crop_parsnip',
-    potato:  'crop_potato',
-    carrot:  'crop_carrot',
-    pumpkin: 'crop_pumpkin',
-    cabbage: 'crop_cabbage',
-    tomato:  'crop_potato',    // fallback (no tomato sprite)
-    corn:    'crop_parsnip',   // fallback (no corn sprite, uses parsnip)
+    // All 13 crop types
+    parsnip:    'crop_parsnip',
+    potato:     'crop_potato',
+    carrot:     'crop_carrot',
+    pumpkin:    'crop_pumpkin',
+    cabbage:    'crop_cabbage',
+    beetroot:   'crop_beetroot',
+    cauliflower:'crop_cauliflower',
+    kale:       'crop_kale',
+    radish:     'crop_radish',
+    sunflower:  'crop_sunflower',
+    wheat:      'crop_wheat',
+    tomato:     'crop_potato',    // fallback (no dedicated sprite)
+    corn:       'crop_parsnip',   // fallback
+    // Tools
     hoe:     'tool_hoe',
     water:   'tool_water',
     sickle:  'tool_sickle',
     axe:     'tool_axe',
     pickaxe: 'tool_pickaxe',
     seeds:   'crop_parsnip',   // generic seed icon
+    // Food
     egg:     'food_egg',
     fish:    'food_fish',
     milk:    'food_milk',
