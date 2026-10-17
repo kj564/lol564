@@ -1294,25 +1294,26 @@ function createAmbientLife() {
 
 function updateAmbientLife(dt) {
   for (const a of ambientAnimals) {
-    a.wait -= dt;
+    a.wait = Math.max(0, a.wait - dt);
     const dx = a.targetX - a.x, dy = a.targetY - a.y;
     const distance = Math.hypot(dx, dy);
     if (distance < 2) {
-      a.wait = Math.max(a.wait, 0.5 + Math.random() * 2.5);
-      if (a.wait <= 0.6) {
-        const radiusPx = a.radius * TILE;
-        for (let attempt = 0; attempt < 5; attempt++) {
-          const tx = a.homeX + (Math.random() * 2 - 1) * radiusPx;
-          const ty = a.homeY + (Math.random() * 2 - 1) * radiusPx;
-          const gx = Math.floor(tx / TILE), gy = Math.floor(ty / TILE);
-          if (gx < 1 || gy < 1 || gx >= MAP_W - 1 || gy >= MAP_H - 1) continue;
-          const tile = map[gy]?.[gx];
-          if (tile == null || tile === T.WATER || tileRenderLayer(tile) === 3) continue;
-          if (gx >= 14 && gx <= 25 && gy >= 12 && gy <= 19) continue;
-          a.targetX = tx; a.targetY = ty;
-          break;
-        }
+      if (a.wait > 0) continue;
+      const radiusPx = a.radius * TILE;
+      let foundTarget = false;
+      for (let attempt = 0; attempt < 6; attempt++) {
+        const tx = a.homeX + (Math.random() * 2 - 1) * radiusPx;
+        const ty = a.homeY + (Math.random() * 2 - 1) * radiusPx;
+        const gx = Math.floor(tx / TILE), gy = Math.floor(ty / TILE);
+        if (gx < 1 || gy < 1 || gx >= MAP_W - 1 || gy >= MAP_H - 1) continue;
+        const tile = map[gy]?.[gx];
+        if (tile == null || tile === T.WATER || tileRenderLayer(tile) === 3) continue;
+        if (gx >= 14 && gx <= 25 && gy >= 12 && gy <= 19) continue;
+        a.targetX = tx; a.targetY = ty;
+        foundTarget = true;
+        break;
       }
+      a.wait = foundTarget ? 0 : 0.8;
       continue;
     }
     if (a.wait > 0) continue;
@@ -1320,6 +1321,7 @@ function updateAmbientLife(dt) {
     a.x += dx / distance * step;
     a.y += dy / distance * step;
     if (Math.abs(dx) > 0.5) a.dir = dx < 0 ? -1 : 1;
+    if (step >= distance) a.wait = 0.5 + Math.random() * 2.2;
   }
 }
 
