@@ -656,6 +656,30 @@
     font-size: 14px; font-weight: 800; color: #ffe04a;
     margin-left: 4px;
   }
+
+  /* Final asset-skin pass: placed after component rules so their background shorthands
+     cannot silently disable the bundled nine-slice textures. */
+  #toolbar, .hud-pill {
+    background-image: linear-gradient(rgba(15,25,15,.84), rgba(15,25,15,.84)), url('assets/UI/9slice_box_white/dt_box_9slice_c.png') !important;
+    background-repeat: repeat !important;
+    background-size: auto, 16px 16px !important;
+    background-blend-mode: soft-light;
+  }
+  .tool-slot {
+    background-image: linear-gradient(rgba(10,16,10,.82), rgba(10,16,10,.82)), url('assets/UI/9slice_box_white/lt_box_9slice_c.png') !important;
+    background-repeat: repeat !important;
+    background-size: auto, 16px 16px !important;
+    background-blend-mode: soft-light;
+  }
+  .tool-slot.active {
+    background-image: linear-gradient(rgba(65,52,14,.68), rgba(65,52,14,.68)), url('assets/UI/9slice_box_white/w_box_9slice_c.png') !important;
+  }
+  .menu-panel, #dialog, .ui-panel, .pause-panel, .help-panel {
+    background-image: linear-gradient(rgba(15,25,15,.90), rgba(15,25,15,.90)), url('assets/UI/9slice_box_white/w_box_9slice_c.png') !important;
+    background-repeat: repeat !important;
+    background-size: auto, 16px 16px !important;
+    background-blend-mode: soft-light;
+  }
 </style>
 </head>
 <body>
