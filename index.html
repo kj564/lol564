@@ -696,7 +696,7 @@
         <div class="ui-tab-page" data-tab="bag">
           <div class="ui-bag-header">
             <span>🎒 Drag item untuk swap slot</span>
-            <span class="ui-bag-count" id="ui-inv-count">0 / 12</span>
+            <span class="ui-bag-count" id="ui-inv-count">0 / 18</span>
           </div>
           <div class="ui-inventory-grid" id="inventoryGrid"></div>
         </div>
@@ -1314,6 +1314,11 @@ function createAmbientLife() {
     { id: 'mushroom-blue', path: 'Elements/Plants/spr_deco_mushroom_blue_01_strip4.png', frames: 4, at: [12, 7], size: 30, animated: true },
     { id: 'mushroom-red', path: 'Elements/Plants/spr_deco_mushroom_red_01_strip4.png', frames: 4, at: [29, 23], size: 28, animated: true },
     { id: 'mushroom-blue-2', path: 'Elements/Plants/spr_deco_mushroom_blue_02_strip4.png', frames: 4, at: [13, 25], size: 28, animated: true },
+    { id: 'mushroom-blue-3', path: 'Elements/Plants/spr_deco_mushroom_blue_03_strip4.png', frames: 4, at: [9, 18], size: 26, animated: true },
+    { id: 'glint-1', path: 'Elements/VFX/Glint/spr_deco_glint_01_strip6.png', frames: 6, at: [16, 8], size: 22, animated: true },
+    { id: 'glint-2', path: 'Elements/VFX/Glint/spr_deco_glint_02_strip4.png', frames: 4, at: [27, 18], size: 18, animated: true },
+    { id: 'glint-3', path: 'Elements/VFX/Glint/spr_deco_glint_01_strip6.png', frames: 6, at: [11, 26], size: 20, animated: true },
+    { id: 'home-smoke', path: 'Elements/VFX/Chimney Smoke/chimneysmoke_01.gif', frames: 1, at: [7, 21], size: 42, animated: false },
   ];
   for (const def of props) {
     const p = findAmbientTile(def.at[0], def.at[1]);
@@ -1422,6 +1427,13 @@ function load() {
       rebuildDecorFromMap();
     }
     player = Object.assign(player, d.player);
+    // Save migration: preserve newly added crop keys when loading older saves.
+    player.inventory = Object.assign({}, player.inventory || {});
+    player.seeds = Object.assign({}, player.seeds || {});
+    for (const cropKey of SEED_LIST) {
+      if (!Number.isFinite(player.inventory[cropKey])) player.inventory[cropKey] = 0;
+      if (!Number.isFinite(player.seeds[cropKey])) player.seeds[cropKey] = 0;
+    }
     day = d.day; season = d.season || 'spring'; seasonDay = d.seasonDay || 1;
     timeOfDay = d.timeOfDay || 6*60;
     selectedTool = d.selectedTool || 'hoe';
