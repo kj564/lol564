@@ -657,34 +657,50 @@
     margin-left: 4px;
   }
 
-  /* Final asset-skin pass: placed after component rules so their background shorthands
-     cannot silently disable the bundled nine-slice textures. */
-  #toolbar, .hud-pill {
-    background-image: linear-gradient(rgba(15,25,15,.84), rgba(15,25,15,.84)), url('assets/UI/9slice_box_white/dt_box_9slice_c.png') !important;
-    background-repeat: repeat !important;
-    background-size: auto, 16px 16px !important;
-    background-blend-mode: soft-light;
+  /* Real nine-slice panel skin: use all nine bundled pieces, not just a flat center tile. */
+  #toolbar, .hud-pill, .menu-panel, #dialog, .ui-panel, .pause-panel, .help-panel, .toast, .pickup-popup {
+    background-image: url('assets/UI/9slice_box_white/dt_box_9slice_tl.png'),
+    url('assets/UI/9slice_box_white/dt_box_9slice_tc.png'),
+    url('assets/UI/9slice_box_white/dt_box_9slice_tr.png'),
+    url('assets/UI/9slice_box_white/dt_box_9slice_lc.png'),
+    url('assets/UI/9slice_box_white/dt_box_9slice_c.png'),
+    url('assets/UI/9slice_box_white/dt_box_9slice_rc.png'),
+    url('assets/UI/9slice_box_white/dt_box_9slice_bl.png'),
+    url('assets/UI/9slice_box_white/dt_box_9slice_bc.png'),
+    url('assets/UI/9slice_box_white/dt_box_9slice_br.png') !important;
+    background-position: left top, center top, right top, left center, center center, right center, left bottom, center bottom, right bottom !important;
+    background-repeat: no-repeat, repeat-x, no-repeat, repeat-y, repeat, repeat-y, no-repeat, repeat-x, no-repeat !important;
+    background-size: 16px 16px, 16px 16px, 16px 16px, 16px 16px, 16px 16px, 16px 16px, 16px 16px, 16px 16px, 16px 16px !important;
+    background-blend-mode: normal;
   }
   .tool-slot {
-    background-image: linear-gradient(rgba(10,16,10,.82), rgba(10,16,10,.82)), url('assets/UI/9slice_box_white/lt_box_9slice_c.png') !important;
-    background-repeat: repeat !important;
-    background-size: auto, 16px 16px !important;
-    background-blend-mode: soft-light;
+    background-image: url('assets/UI/9slice_box_white/lt_box_9slice_tl.png'),
+    url('assets/UI/9slice_box_white/lt_box_9slice_tc.png'),
+    url('assets/UI/9slice_box_white/lt_box_9slice_tr.png'),
+    url('assets/UI/9slice_box_white/lt_box_9slice_lc.png'),
+    url('assets/UI/9slice_box_white/lt_box_9slice_c.png'),
+    url('assets/UI/9slice_box_white/lt_box_9slice_rc.png'),
+    url('assets/UI/9slice_box_white/lt_box_9slice_bl.png'),
+    url('assets/UI/9slice_box_white/lt_box_9slice_bc.png'),
+    url('assets/UI/9slice_box_white/lt_box_9slice_br.png') !important;
+    background-position: left top, center top, right top, left center, center center, right center, left bottom, center bottom, right bottom !important;
+    background-repeat: no-repeat, repeat-x, no-repeat, repeat-y, repeat, repeat-y, no-repeat, repeat-x, no-repeat !important;
+    background-size: 16px 16px, 16px 16px, 16px 16px, 16px 16px, 16px 16px, 16px 16px, 16px 16px, 16px 16px, 16px 16px !important;
+    background-blend-mode: normal;
   }
   .tool-slot.active {
-    background-image: linear-gradient(rgba(65,52,14,.68), rgba(65,52,14,.68)), url('assets/UI/9slice_box_white/w_box_9slice_c.png') !important;
-  }
-  .menu-panel, #dialog, .ui-panel, .pause-panel, .help-panel {
-    background-image: linear-gradient(rgba(15,25,15,.90), rgba(15,25,15,.90)), url('assets/UI/9slice_box_white/w_box_9slice_c.png') !important;
-    background-repeat: repeat !important;
-    background-size: auto, 16px 16px !important;
-    background-blend-mode: soft-light;
-  }
-  .toast, .pickup-popup {
-    background-image: linear-gradient(rgba(15,25,15,.88), rgba(15,25,15,.88)), url('assets/UI/9slice_box_white/dt_box_9slice_c.png') !important;
-    background-repeat: repeat !important;
-    background-size: auto, 16px 16px !important;
-    background-blend-mode: soft-light;
+    background-image: url('assets/UI/9slice_box_white/w_box_9slice_tl.png'),
+    url('assets/UI/9slice_box_white/w_box_9slice_tc.png'),
+    url('assets/UI/9slice_box_white/w_box_9slice_tr.png'),
+    url('assets/UI/9slice_box_white/w_box_9slice_lc.png'),
+    url('assets/UI/9slice_box_white/w_box_9slice_c.png'),
+    url('assets/UI/9slice_box_white/w_box_9slice_rc.png'),
+    url('assets/UI/9slice_box_white/w_box_9slice_bl.png'),
+    url('assets/UI/9slice_box_white/w_box_9slice_bc.png'),
+    url('assets/UI/9slice_box_white/w_box_9slice_br.png') !important;
+    background-position: left top, center top, right top, left center, center center, right center, left bottom, center bottom, right bottom !important;
+    background-repeat: no-repeat, repeat-x, no-repeat, repeat-y, repeat, repeat-y, no-repeat, repeat-x, no-repeat !important;
+    background-size: 16px 16px, 16px 16px, 16px 16px, 16px 16px, 16px 16px, 16px 16px, 16px 16px, 16px 16px, 16px 16px !important;
   }
 </style>
 </head>
