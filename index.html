@@ -1225,10 +1225,6 @@ function generateMap() {
   }
   // Nighttime fireflies are spawned dynamically in updateDecor() based on time of day
 
-  // Ambient animals + scenery are generated after terrain/buildings so their spawn points
-  // can be checked against the completed map and will not appear inside walls or water.
-  createAmbientLife();
-
   // NPCs - now use Ninja Adventure complete character sprites (16x16 frames in 4x4 grid)
   // Sprite names map to: assets/ninja-adventure/Characters/<Name>_walk.png
   npcs = [
@@ -3826,6 +3822,8 @@ function init() {
   resizeCanvas();
   generateMap();
   const loaded = load();
+  // Build ambient entities after loading so spawn points match the actual saved map.
+  createAmbientLife();
   if (!loaded) {
     // first time - show intro
     renderToolbar();
