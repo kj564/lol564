@@ -874,6 +874,8 @@ const CROPS = {
   potato:  { name: 'Kentang',   days: 4, sell: 80,  seedCost: 50,  color: '#b07a4a', stem: '#6a8a40', icon: '🥔' },
   tomato:  { name: 'Tomat',     days: 5, sell: 120, seedCost: 80,  color: '#e34a3a', stem: '#5a8a40', icon: '🍅' },
   corn:    { name: 'Jagung',    days: 6, sell: 150, seedCost: 100, color: '#ffd23d', stem: '#5a8a30', icon: '🌽' },
+  carrot:  { name: 'Wortel',    days: 4, sell: 65,  seedCost: 35,  color: '#f28c28', stem: '#5a9a42', icon: '🥕' },
+  pumpkin: { name: 'Labu',      days: 7, sell: 190, seedCost: 125, color: '#f28c28', stem: '#4d8a35', icon: '🎃' },
 };
 const SEED_LIST = Object.keys(CROPS);
 
@@ -900,7 +902,12 @@ const CROP_ASSETS = {
   potato: 'Elements/Crops/potato',
   tomato: null, // no tomato sprite exists in the installed pack; retain the original fallback drawing.
   corn: 'Elements/Crops/wheat',
+  carrot: 'Elements/Crops/carrot',
+  pumpkin: 'Elements/Crops/pumpkin',
 };
+function getCropIconKey(type) {
+  return ({ parsnip: 'crop_parsnip', potato: 'crop_potato', tomato: 'crop_potato', corn: 'crop_potato', carrot: 'crop_carrot', pumpkin: 'crop_pumpkin' })[type] || 'crop_parsnip';
+}
 const TOOL_ASSETS = {
   hoe: 'UI/pickaxe.png',
   seeds: 'UI/basket.png',
@@ -921,8 +928,8 @@ let player = {
   moving: false,
   gold: 500,
   energy: 100,
-  inventory: { parsnip: 0, potato: 0, tomato: 0, corn: 0 },
-  seeds: { parsnip: 5, potato: 2, tomato: 1, corn: 0 },
+  inventory: { parsnip: 0, potato: 0, tomato: 0, corn: 0, carrot: 0, pumpkin: 0 },
+  seeds: { parsnip: 5, potato: 2, tomato: 1, corn: 0, carrot: 0, pumpkin: 0 },
   water: 20, maxWater: 20,
 };
 let selectedTool = 'hoe';
@@ -1014,7 +1021,7 @@ function buildInventoryData() {
   return [
     // Hotbar slots (0-4) — match TOOLS order: hoe, seeds, water, sickle, axe
     { id: 'hoe',       name: 'Cangkul',       quantity: 1, assetKey: 'tool_hoe',     type: 'tool' },
-    { id: 'seeds',     name: 'Benih ' + selectedSeed,  quantity: player.seeds[selectedSeed] ?? 0, assetKey: selectedSeed === 'parsnip' ? 'crop_parsnip' : 'crop_potato', type: 'seed' },
+    { id: 'seeds',     name: 'Benih ' + selectedSeed,  quantity: player.seeds[selectedSeed] ?? 0, assetKey: getCropIconKey(selectedSeed), type: 'seed' },
     { id: 'water',     name: 'Penyiram',      quantity: player.water, assetKey: 'tool_water', type: 'tool' },
     { id: 'sickle',    name: 'Sabit',         quantity: 1, assetKey: 'tool_sickle',  type: 'tool' },
     { id: 'axe',       name: 'Kapak',         quantity: 1, assetKey: 'tool_axe',     type: 'tool' },
@@ -1024,8 +1031,8 @@ function buildInventoryData() {
     { id: 'potato',    name: 'Kentang',       quantity: player.inventory.potato,  assetKey: 'crop_potato',  type: 'crop' },
     { id: 'tomato',    name: 'Tomat',          quantity: player.inventory.tomato, assetKey: 'crop_potato',  type: 'crop' },
     { id: 'corn',      name: 'Jagung',         quantity: player.inventory.corn,   assetKey: 'crop_parsnip', type: 'crop' },
-    null,
-    null,
+    { id: 'carrot',    name: 'Wortel',          quantity: player.inventory.carrot || 0, assetKey: 'crop_carrot', type: 'crop' },
+    { id: 'pumpkin',   name: 'Labu',            quantity: player.inventory.pumpkin || 0, assetKey: 'crop_pumpkin', type: 'crop' },
   ];
 }
 let inventoryData = buildInventoryData();
@@ -1633,7 +1640,7 @@ function renderToolbar() {
             id: 'seeds',
             name: 'Benih ' + selectedSeed,
             quantity: player.seeds[selectedSeed] ?? 0,
-            assetKey: selectedSeed === 'parsnip' ? 'crop_parsnip' : 'crop_potato',
+            assetKey: getCropIconKey(selectedSeed),
             type: 'seed',
           };
           renderToolbar();
@@ -1686,7 +1693,7 @@ function selectFromHotbar(slotIndex) {
       id: 'seeds',
       name: 'Benih ' + selectedSeed,
       quantity: player.seeds[selectedSeed] ?? 0,
-      assetKey: selectedSeed === 'parsnip' ? 'crop_parsnip' : 'crop_potato',
+      assetKey: getCropIconKey(selectedSeed),
       type: 'seed',
     };
     renderToolbar();
@@ -1777,6 +1784,10 @@ function syncInvQuantities() {
       item.quantity = player.inventory.tomato;
     } else if (item.id === 'corn') {
       item.quantity = player.inventory.corn;
+    } else if (item.id === 'carrot') {
+      item.quantity = player.inventory.carrot || 0;
+    } else if (item.id === 'pumpkin') {
+      item.quantity = player.inventory.pumpkin || 0;
     } else if (item.id === 'parsnip_seed') {
       item.quantity = player.seeds.parsnip;
     } else if (item.id === 'potato_seed') {
