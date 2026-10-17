@@ -36,13 +36,15 @@
   }
   .hud-group { display: flex; gap: 8px; pointer-events: auto; flex-wrap: wrap; }
   .hud-pill {
-    background: rgba(15, 25, 15, 0.85);
+    background-color: rgba(15, 25, 15, 0.85);
     border: 2px solid rgba(180, 220, 120, 0.5);
     border-radius: 10px;
     padding: 6px 12px;
     backdrop-filter: blur(6px);
     display: flex; align-items: center; gap: 6px;
     font-weight: 700;
+    white-space: nowrap;
+    min-width: max-content;
     box-shadow: 0 4px 12px rgba(0,0,0,0.4);
   }
   .hud-pill .icon { font-size: 16px; }
@@ -165,7 +167,7 @@
     -webkit-background-clip: text; background-clip: text; color: transparent;
     margin-bottom: 4px;
   }
-  .menu-panel .subtitle { font-size: 12px; color: #88a06a; margin-bottom: 16px; }
+  .menu-panel .subtitle { font-size: 12px; color: #b0c8a0; margin-bottom: 16px; }
   .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   @media (max-width: 480px) { .menu-grid { grid-template-columns: 1fr; } }
   .menu-item {
@@ -183,7 +185,7 @@
   .menu-item .emoji { font-size: 28px; }
   .menu-item .info { flex: 1; min-width: 0; }
   .menu-item .name { font-weight: 700; font-size: 14px; color: #fff; }
-  .menu-item .meta { font-size: 11px; color: #88a06a; }
+  .menu-item .meta { font-size: 11px; color: #a0b890; }
   .menu-item .price { font-weight: 800; font-size: 13px; }
   .menu-item .price.buy { color: #ffd54a; }
   .menu-item .price.sell { color: #88e06a; }
@@ -403,8 +405,9 @@
     padding: 8px 14px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     font-size: 11px;
-    color: #88a06a;
+    color: #b0c8a0;
     text-align: right;
+    flex-shrink: 0;
   }
   .ui-panel-footer kbd {
     background: rgba(255, 255, 255, 0.08);
@@ -426,7 +429,7 @@
     image-rendering: pixelated;
   }
   .ui-name { font-size: 18px; font-weight: 800; color: #fff; }
-  .ui-title { font-size: 11px; color: #88a06a; }
+  .ui-title { font-size: 11px; color: #b0c8a0; }
   .ui-status-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .ui-status-row {
     display: flex; justify-content: space-between;
@@ -555,7 +558,7 @@
     margin-bottom: 6px;
     text-shadow: 0 0 20px rgba(136, 192, 255, 0.4);
   }
-  .pause-subtitle { font-size: 11px; color: #5a6a8a; margin-bottom: 20px; }
+  .pause-subtitle { font-size: 12px; color: #8a9aba; margin-bottom: 20px; }
   .pause-btn {
     display: block; width: 100%;
     padding: 12px 16px; margin-bottom: 8px;
@@ -577,7 +580,7 @@
     border-color: rgba(136, 192, 255, 0.8);
     color: #fff;
   }
-  .pause-hint { font-size: 10px; color: #4a5a7a; margin-top: 14px; }
+  .pause-hint { font-size: 11px; color: #8a9aba; margin-top: 14px; }
 
   /* ===== Dynamic Map Zone Display ===== */
   .zone-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
@@ -748,7 +751,7 @@
       <div class="ui-panel-header">
         <button class="ui-tab-btn active" data-tab="status"><img class="ui-tab-icon" src="assets/UI/indicator.png" alt=""> Status</button>
         <button class="ui-tab-btn" data-tab="bag"><img class="ui-tab-icon" src="assets/UI/basket.png" alt=""> Bag</button>
-        <button class="ui-tab-btn" data-tab="map"><img class="ui-tab-icon" src="assets/UI/plan alt.png" alt=""> Map</button>
+        <button class="ui-tab-btn" data-tab="map"><img class="ui-tab-icon" src="assets/UI/plan%20alt.png" alt=""> Map</button>
         <span class="ui-panel-close" id="ui-close">✕</span>
       </div>
       <div class="ui-panel-body">
@@ -2719,7 +2722,8 @@ function openShop() {
   menuOpen = 'shop';
   const panel = document.getElementById('menu-panel');
   let html = `<h2>🛒 Toko Benih Harvest Vale</h2>
-    <div class="subtitle">Beli benih & jual hasil panen. Emasmu: <strong style="color:#ffd54a">${player.gold}g</strong></div>
+    <div class="subtitle">Emasmu: <strong style="color:#ffd54a">${player.gold}g</strong></div>
+    <h3 style="color:#88e06a; font-size:13px; margin:10px 0 6px;">📥 BELI BENIH</h3>
     <div class="menu-grid">`;
   // Buy seeds
   for (const key of SEED_LIST) {
@@ -2729,12 +2733,15 @@ function openShop() {
       <div class="emoji">${c.icon}</div>
       <div class="info">
         <div class="name">Benih ${c.name}</div>
-        <div class="meta">Tumbuh ${c.days} hari · Jual ${c.sell}g</div>
+        <div class="meta" style="color:#a0b090;">${c.days} hari · Jual ${c.sell}g</div>
         <div class="qty">Dimiliki: ${owned}</div>
       </div>
       <div class="price buy">${c.seedCost}g</div>
     </div>`;
   }
+  html += `</div>
+    <h3 style="color:#88e06a; font-size:13px; margin:14px 0 6px;">📤 JUAL HASIL PANEN</h3>
+    <div class="menu-grid">`;
   // Sell harvested
   for (const key of SEED_LIST) {
     const c = CROPS[key];
@@ -2743,8 +2750,8 @@ function openShop() {
     html += `<div class="menu-item${disabled ? ' disabled' : ''}" data-action="sell" data-seed="${key}">
       <div class="emoji">${c.icon}</div>
       <div class="info">
-        <div class="name">${c.name}</div>
-        <div class="meta">Jual hasil panen</div>
+        <div class="name">Panen ${c.name}</div>
+        <div class="meta" style="color:#a0b090;">Jual hasil panen</div>
         <div class="qty">Stok: ${have}</div>
       </div>
       <div class="price sell">${c.sell}g</div>
@@ -3231,14 +3238,16 @@ function drawCharacter(px, py, dir, shirt, hair, frame, name) {
   } else if (dir === 'right') {
     ctx.fillRect(px + 18, py + 8, 2, 2);
   }
-  // name label
+  // name label — positioned higher to avoid overlap with [E] indicator
   if (name) {
     ctx.font = 'bold 10px system-ui';
     ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.fillRect(px + 4, py - 6, 24, 12);
+    const nameY = py - 22;
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    const tw = ctx.measureText(name).width;
+    ctx.fillRect(px + 16 - tw/2 - 4, nameY - 2, tw + 8, 13);
     ctx.fillStyle = '#ffe04a';
-    ctx.fillText(name, px + 16, py + 3);
+    ctx.fillText(name, px + 16, nameY + 8);
     ctx.textAlign = 'left';
   }
 }
@@ -3755,8 +3764,10 @@ function updateCurrentZone() {
   );
   const newZoneId = zone ? zone.id : null;
   if (newZoneId !== currentZoneId) {
+    const oldZoneId = currentZoneId;
     currentZoneId = newZoneId;
-    if (zone) {
+    if (zone && oldZoneId !== null) {
+      // Only show toast/popup on actual zone transition (not initial detection)
       toast(`📍 Memasuki: ${zone.name}`, 'info');
       AudioManager.playZone();
       showPopup(zone.id === 'town' ? 'parsnip' : 'pumpkin', zone.name, 'pickup', zone.icon);
