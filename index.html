@@ -46,6 +46,20 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.4);
   }
   .hud-pill .icon { font-size: 16px; }
+  .ui-tab-icon { width: 18px; height: 18px; object-fit: contain; image-rendering: pixelated; vertical-align: middle; margin-right: 4px; }
+  /* Reuse the shipped nine-slice center textures as a subtle pixel-art grain. */
+  .hud-pill, #toolbar, .tool-slot, .menu-panel, #dialog, .ui-panel, .pause-panel, .help-panel, .toast, .pickup-popup {
+    background-blend-mode: soft-light;
+  }
+  .menu-panel, #dialog, .ui-panel, .pause-panel, .help-panel {
+    background-image: linear-gradient(rgba(15,25,15,.90), rgba(15,25,15,.90)), url('assets/UI/9slice_box_white/w_box_9slice_c.png');
+    background-repeat: repeat; background-size: auto, 16px 16px;
+  }
+  .tool-slot { background-image: linear-gradient(rgba(10,16,10,.82), rgba(10,16,10,.82)), url('assets/UI/9slice_box_white/lt_box_9slice_c.png'); }
+  .tool-slot.active { background-image: linear-gradient(rgba(65,52,14,.68), rgba(65,52,14,.68)), url('assets/UI/9slice_box_white/w_box_9slice_c.png'); }
+  #toolbar { background-image: linear-gradient(rgba(15,25,15,.84), rgba(15,25,15,.84)), url('assets/UI/9slice_box_white/dt_box_9slice_c.png'); }
+  .hud-pill { background-image: linear-gradient(rgba(15,25,15,.84), rgba(15,25,15,.84)), url('assets/UI/9slice_box_white/w_box_9slice_c.png'); }
+
   .hud-asset-icon {
     width: 18px; height: 18px; flex: 0 0 18px;
     object-fit: contain; image-rendering: pixelated;
@@ -685,9 +699,9 @@
   <div id="ui-menu">
     <div class="ui-panel">
       <div class="ui-panel-header">
-        <button class="ui-tab-btn active" data-tab="status">📊 Status</button>
-        <button class="ui-tab-btn" data-tab="bag">🎒 Bag</button>
-        <button class="ui-tab-btn" data-tab="map">🗺️ Map</button>
+        <button class="ui-tab-btn active" data-tab="status"><img class="ui-tab-icon" src="assets/UI/indicator.png" alt=""> Status</button>
+        <button class="ui-tab-btn" data-tab="bag"><img class="ui-tab-icon" src="assets/UI/basket.png" alt=""> Bag</button>
+        <button class="ui-tab-btn" data-tab="map"><img class="ui-tab-icon" src="assets/UI/plan alt.png" alt=""> Map</button>
         <span class="ui-panel-close" id="ui-close">✕</span>
       </div>
       <div class="ui-panel-body">
