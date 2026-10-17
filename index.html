@@ -1053,6 +1053,10 @@ const invAssets = {};  // loaded async at init
 let toastList = [];
 let nearbyAction = null; // {type:'shop'|'sleep'|'npc', x, y}
 let npcs = [];
+// Ambient wildlife and scenery use the installed Sunnyside sprite strips.
+// They are visual world entities, separate from solid map collision.
+let ambientAnimals = [];
+let ambientProps = [];
 let particles = [];
 let sleepTransition = 0; // 0..1 for fade
 let gameStarted = false;
@@ -1214,6 +1218,10 @@ function generateMap() {
   }
   // Nighttime fireflies are spawned dynamically in updateDecor() based on time of day
 
+  // Ambient animals + scenery are generated after terrain/buildings so their spawn points
+  // can be checked against the completed map and will not appear inside walls or water.
+  createAmbientLife();
+
   // NPCs - now use Ninja Adventure complete character sprites (16x16 frames in 4x4 grid)
   // Sprite names map to: assets/ninja-adventure/Characters/<Name>_walk.png
   npcs = [
@@ -1231,6 +1239,126 @@ function generateMap() {
         'Jangan lupa istirahat. Tidur di rumah biar energi pulih.'
       ]},
   ];
+}
+
+// ---------- Ambient wildlife & scenery ----------
+function findAmbientTile(tx, ty) {
+  // Search outward from the preferred location for a safe, visible tile.
+  for (let radius = 0; radius <= 6; radius++) {
+    for (let oy = -radius; oy <= radius; oy++) {
+      for (let ox = -radius; ox <= radius; ox++) {
+        if (Math.max(Math.abs(ox), Math.abs(oy)) !== radius) continue;
+        const x = tx + ox, y = ty + oy;
+        if (x < 1 || y < 1 || x >= MAP_W - 1 || y >= MAP_H - 1) continue;
+        const tile = map[y]?.[x];
+        if (tile == null || tile === T.WATER || tileRenderLayer(tile) === 3) continue;
+        // Avoid placing scenery directly in the fenced crop rows.
+        if (x >= 14 && x <= 25 && y >= 12 && y <= 19) continue;
+        return { x, y };
+      }
+    }
+  }
+  return { x: Math.max(1, Math.min(MAP_W - 2, tx)), y: Math.max(1, Math.min(MAP_H - 2, ty)) };
+}
+
+function createAmbientLife() {
+  ambientAnimals = [];
+  ambientProps = [];
+  const animals = [
+    { id: 'bird-1', type: 'bird', path: 'Elements/Animals/spr_deco_bird_01_strip4.png', frames: 4, at: [11, 8], radius: 1.5, speed: 13 },
+    { id: 'chicken-1', type: 'chicken', path: 'Elements/Animals/spr_deco_chicken_01_strip4.png', frames: 4, at: [12, 10], radius: 1.8, speed: 10 },
+    { id: 'duck-1', type: 'duck', path: 'Elements/Animals/spr_deco_duck_01_strip4.png', frames: 4, at: [10, 8], radius: 1.2, speed: 8 },
+    { id: 'cow-1', type: 'cow', path: 'Elements/Animals/spr_deco_cow_strip4.png', frames: 4, at: [27, 7], radius: 1.5, speed: 6 },
+    { id: 'sheep-1', type: 'sheep', path: 'Elements/Animals/spr_deco_sheep_01_strip4.png', frames: 4, at: [28, 24], radius: 1.4, speed: 7 },
+    { id: 'pig-1', type: 'pig', path: 'Elements/Animals/spr_deco_pig_01_strip4.png', frames: 4, at: [27, 26], radius: 1.2, speed: 7 },
+  ];
+  for (const def of animals) {
+    const p = findAmbientTile(def.at[0], def.at[1]);
+    const x = p.x * TILE, y = p.y * TILE;
+    ambientAnimals.push({
+      ...def, x, y, homeX: x, homeY: y, targetX: x, targetY: y,
+      dir: 1, wait: Math.random() * 2, phase: Math.random() * 10,
+    });
+  }
+  const props = [
+    { id: 'windmill', path: 'Elements/Other/spr_deco_windmill_withshadow_strip9.png', frames: 9, at: [25, 4], size: 64, animated: true },
+    { id: 'mushroom-blue', path: 'Elements/Plants/spr_deco_mushroom_blue_01_strip4.png', frames: 4, at: [12, 7], size: 30, animated: true },
+    { id: 'mushroom-red', path: 'Elements/Plants/spr_deco_mushroom_red_01_strip4.png', frames: 4, at: [29, 23], size: 28, animated: true },
+    { id: 'mushroom-blue-2', path: 'Elements/Plants/spr_deco_mushroom_blue_02_strip4.png', frames: 4, at: [13, 25], size: 28, animated: true },
+  ];
+  for (const def of props) {
+    const p = findAmbientTile(def.at[0], def.at[1]);
+    ambientProps.push({ ...def, x: p.x * TILE, y: p.y * TILE, phase: Math.random() * 8 });
+  }
+}
+
+function updateAmbientLife(dt) {
+  for (const a of ambientAnimals) {
+    a.wait -= dt;
+    const dx = a.targetX - a.x, dy = a.targetY - a.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance < 2) {
+      a.wait = Math.max(a.wait, 0.5 + Math.random() * 2.5);
+      if (a.wait <= 0.6) {
+        const radiusPx = a.radius * TILE;
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const tx = a.homeX + (Math.random() * 2 - 1) * radiusPx;
+          const ty = a.homeY + (Math.random() * 2 - 1) * radiusPx;
+          const gx = Math.floor(tx / TILE), gy = Math.floor(ty / TILE);
+          if (gx < 1 || gy < 1 || gx >= MAP_W - 1 || gy >= MAP_H - 1) continue;
+          const tile = map[gy]?.[gx];
+          if (tile == null || tile === T.WATER || tileRenderLayer(tile) === 3) continue;
+          if (gx >= 14 && gx <= 25 && gy >= 12 && gy <= 19) continue;
+          a.targetX = tx; a.targetY = ty;
+          break;
+        }
+      }
+      continue;
+    }
+    if (a.wait > 0) continue;
+    const step = Math.min(distance, a.speed * dt);
+    a.x += dx / distance * step;
+    a.y += dy / distance * step;
+    if (Math.abs(dx) > 0.5) a.dir = dx < 0 ? -1 : 1;
+  }
+}
+
+function drawAmbientAnimal(a) {
+  const img = getAsset(a.path);
+  if (!img || !img.naturalWidth) return;
+  const frameW = img.naturalWidth / a.frames;
+  const frameH = img.naturalHeight;
+  if (!(frameW > 0 && frameH > 0)) return;
+  const frame = Math.floor((performance.now() / 220) + a.phase) % a.frames;
+  const scale = Math.min(1.25, 32 / Math.max(frameW, frameH));
+  const dw = frameW * scale, dh = frameH * scale;
+  const sx = a.x - camera.x + (TILE - dw) / 2;
+  const sy = a.y - camera.y + TILE - dh;
+  if (sx < -TILE || sy < -TILE || sx > canvas.clientWidth + TILE || sy > canvas.clientHeight + TILE) return;
+  ctx.save();
+  if (a.dir < 0) {
+    ctx.translate(sx + dw, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(img, frame * frameW, 0, frameW, frameH, 0, sy, dw, dh);
+  } else {
+    ctx.drawImage(img, frame * frameW, 0, frameW, frameH, sx, sy, dw, dh);
+  }
+  ctx.restore();
+}
+
+function drawAmbientProp(p) {
+  const img = getAsset(p.path);
+  if (!img || !img.naturalWidth) return;
+  const frameW = img.naturalWidth / p.frames;
+  const frameH = img.naturalHeight;
+  if (!(frameW > 0 && frameH > 0)) return;
+  const frame = p.animated ? Math.floor((performance.now() / (p.id === 'windmill' ? 130 : 430)) + p.phase) % p.frames : 0;
+  const scale = Math.min(p.size / Math.max(frameW, frameH), p.id === 'windmill' ? 2 : 1.5);
+  const dw = frameW * scale, dh = frameH * scale;
+  const sx = p.x - camera.x + TILE / 2 - dw / 2;
+  const sy = p.y - camera.y + TILE - dh;
+  if (sx < -p.size || sy < -p.size || sx > canvas.clientWidth + p.size || sy > canvas.clientHeight + p.size) return;
+  ctx.drawImage(img, frame * frameW, 0, frameW, frameH, sx, sy, dw, dh);
 }
 
 // ---------- Save / Load ----------
@@ -3042,13 +3170,12 @@ function drawSleepFade() {
 // Used by render() to draw tiles in correct depth order across 3 sub-passes.
 function tileRenderLayer(tileId) {
   switch (tileId) {
-    // Layer 1 (Ground): base terrain — grass, sand, water, floor, path, tilled, watered
+    // Layer 1 (Ground): base terrain only — terrain and structural floor tiles.
     case T.GRASS: case T.GRASS2: case T.SAND: case T.WATER:
     case T.FLOOR: case T.SHOP_FLOOR: case T.PATH:
-    case T.TILLED: case T.WATERED:
       return 1;
-    // Layer 2 (WalkInFront): decorative overlays under player feet
-    case T.FLOWER:
+    // Layer 2 (WalkInFront): soil state and ground-level overlays.
+    case T.TILLED: case T.WATERED: case T.FLOWER:
       return 2;
     // Layer 3 (Collision): solid blocking tiles — walls, fences, trees, bushes
     case T.WALL: case T.SHOP_WALL: case T.FENCE: case T.BUSH: case T.TREE:
@@ -3290,10 +3417,14 @@ function render() {
   // ===== PASS 3.5: Layer 3.5 (Player + NPCs) — Y-sorted dynamic entities =====
   const drawables = [];
   for (const n of npcs) drawables.push({ y: n.y + TILE/2, kind: 'npc', ref: n });
+  for (const a of ambientAnimals) drawables.push({ y: a.y + TILE - 2, kind: 'animal', ref: a });
+  for (const p of ambientProps) drawables.push({ y: p.y + TILE - 2, kind: 'prop', ref: p });
   drawables.push({ y: player.y, kind: 'player' });
   drawables.sort((a, b) => a.y - b.y);
   for (const d of drawables) {
     if (d.kind === 'npc') drawNPC(d.ref);
+    else if (d.kind === 'animal') drawAmbientAnimal(d.ref);
+    else if (d.kind === 'prop') drawAmbientProp(d.ref);
     else drawPlayer();
   }
   // ===== PASS 4: Layer 4 (WalkBehind) — tree canopies, roof overhangs =====
@@ -3347,6 +3478,7 @@ function loop(now) {
     // ===== Pause System: bypass ALL updates when paused (freeze frame) =====
     if (!isPaused) {
       updatePlayer(dt);
+      updateAmbientLife(dt);
       updateNearbyAction();
       updateTime(dt);
       updateParticles(dt);
