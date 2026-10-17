@@ -46,6 +46,30 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.4);
   }
   .hud-pill .icon { font-size: 16px; }
+  .ui-tab-icon { width: 18px; height: 18px; object-fit: contain; image-rendering: pixelated; vertical-align: middle; margin-right: 4px; }
+  /* Reuse the shipped nine-slice center textures as a subtle pixel-art grain. */
+  .hud-pill, #toolbar, .tool-slot, .menu-panel, #dialog, .ui-panel, .pause-panel, .help-panel, .toast, .pickup-popup {
+    background-blend-mode: soft-light;
+  }
+  .menu-panel, #dialog, .ui-panel, .pause-panel, .help-panel {
+    background-image: linear-gradient(rgba(15,25,15,.90), rgba(15,25,15,.90)), url('assets/UI/9slice_box_white/w_box_9slice_c.png');
+    background-repeat: repeat; background-size: auto, 16px 16px;
+  }
+  .tool-slot { background-image: linear-gradient(rgba(10,16,10,.82), rgba(10,16,10,.82)), url('assets/UI/9slice_box_white/lt_box_9slice_c.png'); }
+  .tool-slot.active { background-image: linear-gradient(rgba(65,52,14,.68), rgba(65,52,14,.68)), url('assets/UI/9slice_box_white/w_box_9slice_c.png'); }
+  #toolbar { background-image: linear-gradient(rgba(15,25,15,.84), rgba(15,25,15,.84)), url('assets/UI/9slice_box_white/dt_box_9slice_c.png'); }
+  .hud-pill { background-image: linear-gradient(rgba(15,25,15,.84), rgba(15,25,15,.84)), url('assets/UI/9slice_box_white/w_box_9slice_c.png'); }
+
+  .hud-asset-icon {
+    width: 18px; height: 18px; flex: 0 0 18px;
+    object-fit: contain; image-rendering: pixelated;
+    filter: drop-shadow(1px 1px 0 rgba(0,0,0,.45));
+  }
+  .hud-pill { background-image: url('assets/UI/9slice_box_white/w_box_9slice_c.png'); background-repeat: repeat; background-size: 16px 16px; }
+  #toolbar { background-image: url('assets/UI/9slice_box_white/dt_box_9slice_c.png'); background-repeat: repeat; background-size: 16px 16px; }
+  .tool-slot { background-image: url('assets/UI/9slice_box_white/lt_box_9slice_c.png'); background-repeat: repeat; background-size: 16px 16px; image-rendering: pixelated; }
+  .tool-slot.active { background-image: url('assets/UI/9slice_box_white/w_box_9slice_c.png'); }
+
   .hud-pill.gold { border-color: #ffd54a; color: #ffe89a; }
   .hud-pill.day { border-color: #88c0ff; color: #c4dcff; }
   .hud-pill.time { border-color: #ffb866; color: #ffd9b0; }
@@ -647,13 +671,13 @@
 
   <div id="hud">
     <div class="hud-group">
-      <div class="hud-pill gold"><span class="icon">💰</span><span id="hud-gold">500</span>g</div>
-      <div class="hud-pill day"><span class="icon">📅</span>Hari <span id="hud-day">1</span></div>
-      <div class="hud-pill season"><span class="icon" id="hud-season-icon">🌱</span><span id="hud-season">Semi</span></div>
+      <div class="hud-pill gold"><img class="hud-asset-icon" src="assets/UI/itemdisc_01.png" alt=""><span id="hud-gold">500</span>g</div>
+      <div class="hud-pill day"><img class="hud-asset-icon" src="assets/UI/sandtimer.png" alt="">Hari <span id="hud-day">1</span></div>
+      <div class="hud-pill season"><img class="hud-asset-icon" id="hud-season-icon" src="assets/UI/plant.png" alt=""><span id="hud-season">Semi</span></div>
     </div>
     <div class="hud-group">
-      <div class="hud-pill time"><span class="icon" id="hud-time-icon">☀️</span><span id="hud-time">06:00</span></div>
-      <div class="hud-pill season"><span class="icon">📍</span><span id="hud-zone">—</span></div>
+      <div class="hud-pill time"><img class="hud-asset-icon" id="hud-time-icon" src="assets/UI/stopwatch.png" alt=""><span id="hud-time">06:00</span></div>
+      <div class="hud-pill season"><img class="hud-asset-icon" src="assets/UI/indicator.png" alt=""><span id="hud-zone">—</span></div>
     </div>
   </div>
 
@@ -675,9 +699,9 @@
   <div id="ui-menu">
     <div class="ui-panel">
       <div class="ui-panel-header">
-        <button class="ui-tab-btn active" data-tab="status">📊 Status</button>
-        <button class="ui-tab-btn" data-tab="bag">🎒 Bag</button>
-        <button class="ui-tab-btn" data-tab="map">🗺️ Map</button>
+        <button class="ui-tab-btn active" data-tab="status"><img class="ui-tab-icon" src="assets/UI/indicator.png" alt=""> Status</button>
+        <button class="ui-tab-btn" data-tab="bag"><img class="ui-tab-icon" src="assets/UI/basket.png" alt=""> Bag</button>
+        <button class="ui-tab-btn" data-tab="map"><img class="ui-tab-icon" src="assets/UI/plan alt.png" alt=""> Map</button>
         <span class="ui-panel-close" id="ui-close">✕</span>
       </div>
       <div class="ui-panel-body">
@@ -904,6 +928,46 @@ function getAsset(path) {
   const img = assetCache[path];
   return img.complete && img.naturalWidth > 0 ? img : null;
 }
+ 
+// Asset-first terrain renderer. Source rectangles are 16x16 cells from the
+// bundled Sunnyside World atlas; drawn at the game's 32px tile scale.
+// Procedural colors remain only as a graceful fallback while the image loads.
+const WORLD_TILESET_PATH = 'Tileset/spr_tileset_sunnysideworld_16px.png';
+const WORLD_ATLAS_CELLS = {
+  grass:      [16, 16],
+  grassAlt:   [48, 16],
+  dirt:       [128, 16],
+  water:      [336, 112],
+  sand:       [112, 48],
+  woodFloor:  [176, 16],
+  woodWall:   [16, 176],
+  shopFloor:  [192, 16],
+  shopWall:   [48, 176],
+  fence:      [608, 16],
+  bush:       [832, 16],
+  stone:      [704, 16],
+};
+function drawAtlasTile(cellName, px, py, tint) {
+  const atlas = getAsset(WORLD_TILESET_PATH);
+  const cell = WORLD_ATLAS_CELLS[cellName];
+  if (!atlas || !cell || atlas.naturalWidth < cell[0] + 16 || atlas.naturalHeight < cell[1] + 16) return false;
+  ctx.drawImage(atlas, cell[0], cell[1], 16, 16, px, py, TILE, TILE);
+  if (tint) {
+    ctx.save();
+    ctx.globalAlpha = 0.14;
+    ctx.fillStyle = tint;
+    ctx.fillRect(px, py, TILE, TILE);
+    ctx.restore();
+  }
+  return true;
+}
+function drawAssetTileOrFallback(cellName, px, py, color, tint) {
+  if (drawAtlasTile(cellName, px, py, tint)) return true;
+  ctx.fillStyle = color;
+  ctx.fillRect(px, py, TILE, TILE);
+  return false;
+}
+
 const CROP_ASSETS = {
   parsnip: 'Elements/Crops/parsnip',
   potato: 'Elements/Crops/potato',
@@ -1059,10 +1123,10 @@ let inventoryData = buildInventoryData();
 
 // Asset paths for inventory icons (REAL files from /assets/)
 const INV_ASSET_PATHS = {
-  tool_hoe:      'ninja-adventure/Items/Tool/Hoe.png',
-  tool_water:    'ninja-adventure/Items/Tool/WateringCan.png',
+  tool_hoe:      'UI/shovel.png',
+  tool_water:    'UI/water.png',
   tool_sickle:   'ninja-adventure/Items/Tool/Sickle.png',
-  tool_axe:      'ninja-adventure/Items/Tool/Axe.png',
+  tool_axe:      'UI/axe.png',
   crop_parsnip:  'Elements/Crops/parsnip_05.png',
   crop_potato:   'Elements/Crops/potato_05.png',
   crop_carrot:   'Elements/Crops/carrot_05.png',
@@ -2781,176 +2845,128 @@ function drawTile(tile, x, y) {
   const py = y * TILE - camera.y;
   if (px < -TILE || py < -TILE || px > canvas.clientWidth + TILE || py > canvas.clientHeight + TILE) return;
 
+  // Terrain is textured from the included world atlas, not a flat rectangle.
   switch (tile) {
     case T.GRASS:
+      drawAssetTileOrFallback('grass', px, py, '#3a6a2a');
+      break;
     case T.GRASS2:
-      ctx.fillStyle = tile === T.GRASS ? '#3a6a2a' : '#346024';
-      ctx.fillRect(px, py, TILE, TILE);
-      // grass blades
-      ctx.fillStyle = 'rgba(120, 200, 80, 0.3)';
-      ctx.fillRect(px + 4, py + 6, 2, 4);
-      ctx.fillRect(px + 18, py + 20, 2, 4);
-      ctx.fillRect(px + 24, py + 8, 2, 4);
+      drawAssetTileOrFallback('grassAlt', px, py, '#346024', '#b7df83');
       break;
-    case T.FLOWER:
-      ctx.fillStyle = '#3a6a2a';
-      ctx.fillRect(px, py, TILE, TILE);
-      ctx.fillStyle = '#ff8ad4';
-      ctx.fillRect(px + 12, py + 12, 8, 8);
-      ctx.fillStyle = '#ffe04a';
-      ctx.fillRect(px + 14, py + 14, 4, 4);
-      break;
-    case T.TILLED: {
-      // Grass backdrop (soil sprite is 16x12, sits on top of grass)
-      ctx.fillStyle = '#3a6a2a';
-      ctx.fillRect(px, py, TILE, TILE);
-      const soilDry = getAsset('Elements/Crops/soil_00.png');
-      if (soilDry && soilDry.complete && soilDry.naturalWidth) {
-        // Soil sprite is 16x12 — anchor to bottom of tile, leaving grass strip on top
-        ctx.drawImage(soilDry, 0, 0, 16, 12, px, py + 4, TILE, TILE - 4);
+    case T.FLOWER: {
+      drawAssetTileOrFallback('grass', px, py, '#3a6a2a');
+      const flower = getAsset('Elements/Plants/spr_deco_mushroom_red_01_strip4.png');
+      if (flower && flower.naturalWidth) {
+        const fw = flower.naturalWidth / 4;
+        ctx.drawImage(flower, 0, 0, fw, flower.naturalHeight, px + 6, py + 7, 20, 24);
       } else {
-        // Fallback procedural
-        ctx.fillStyle = '#6a4a2a';
-        ctx.fillRect(px, py + 4, TILE, TILE - 4);
-        ctx.fillStyle = '#5a3a1a';
-        ctx.fillRect(px, py + 4, TILE, 2);
-        ctx.fillRect(px, py + 15, TILE, 2);
-        ctx.fillRect(px, py + 27, TILE, 2);
+        ctx.fillStyle = '#ff8ad4'; ctx.fillRect(px + 12, py + 12, 8, 8);
+        ctx.fillStyle = '#ffe04a'; ctx.fillRect(px + 14, py + 14, 4, 4);
+      }
+      break;
+    }
+    case T.TILLED: {
+      drawAssetTileOrFallback('grass', px, py, '#3a6a2a');
+      const soil = getAsset('Elements/Crops/soil_00.png');
+      if (soil) ctx.drawImage(soil, 0, 0, soil.naturalWidth, soil.naturalHeight, px, py + 5, TILE, TILE - 5);
+      else {
+        ctx.fillStyle = '#6a4a2a'; ctx.fillRect(px, py + 5, TILE, TILE - 5);
+        ctx.fillStyle = '#5a3a1a'; ctx.fillRect(px, py + 5, TILE, 2);
+        ctx.fillRect(px, py + 16, TILE, 2); ctx.fillRect(px, py + 27, TILE, 2);
       }
       break;
     }
     case T.WATERED: {
-      // Grass backdrop
-      ctx.fillStyle = '#3a6a2a';
-      ctx.fillRect(px, py, TILE, TILE);
-      // Wet soil sprite (soil_04 is the wet variant)
-      const soilWet = getAsset('Elements/Crops/soil_04.png');
-      if (soilWet && soilWet.complete && soilWet.naturalWidth) {
-        ctx.drawImage(soilWet, 0, 0, 16, 12, px, py + 4, TILE, TILE - 4);
-      } else {
-        ctx.fillStyle = '#3a2a14';
-        ctx.fillRect(px, py + 4, TILE, TILE - 4);
-      }
-      // Wet shine (extra water sparkle on top of sprite)
-      ctx.fillStyle = 'rgba(120, 180, 255, 0.35)';
-      ctx.fillRect(px + 4, py + 8, 6, 2);
-      ctx.fillRect(px + 18, py + 22, 6, 2);
+      drawAssetTileOrFallback('grass', px, py, '#3a6a2a');
+      const wet = getAsset('Elements/Crops/soil_04.png');
+      if (wet) ctx.drawImage(wet, 0, 0, wet.naturalWidth, wet.naturalHeight, px, py + 5, TILE, TILE - 5);
+      else { ctx.fillStyle = '#3a2a14'; ctx.fillRect(px, py + 5, TILE, TILE - 5); }
       break;
     }
     case T.WATER:
-      ctx.fillStyle = '#2a5a9a';
-      ctx.fillRect(px, py, TILE, TILE);
-      ctx.fillStyle = '#3a6aba';
-      ctx.fillRect(px + 2, py + 6, 8, 3);
-      ctx.fillRect(px + 18, py + 14, 8, 3);
-      ctx.fillRect(px + 6, py + 22, 8, 3);
-      ctx.fillStyle = 'rgba(255,255,255,0.2)';
-      ctx.fillRect(px + 4, py + 7, 4, 1);
-      ctx.fillRect(px + 20, py + 15, 4, 1);
+      if (!drawAtlasTile('water', px, py)) {
+        ctx.fillStyle = '#2a5a9a'; ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = '#3a6aba';
+        ctx.fillRect(px + 2, py + 6, 8, 3); ctx.fillRect(px + 18, py + 14, 8, 3); ctx.fillRect(px + 6, py + 22, 8, 3);
+      }
       break;
     case T.SAND:
-      ctx.fillStyle = '#d4c08a';
-      ctx.fillRect(px, py, TILE, TILE);
-      ctx.fillStyle = '#c4b07a';
-      ctx.fillRect(px + 6, py + 8, 2, 2);
-      ctx.fillRect(px + 20, py + 18, 2, 2);
-      ctx.fillRect(px + 12, py + 24, 2, 2);
+      if (!drawAtlasTile('sand', px, py)) {
+        ctx.fillStyle = '#d4c08a'; ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = '#c4b07a'; ctx.fillRect(px + 6, py + 8, 2, 2); ctx.fillRect(px + 20, py + 18, 2, 2);
+      }
       break;
     case T.PATH:
-      ctx.fillStyle = '#8a7a5a';
-      ctx.fillRect(px, py, TILE, TILE);
-      ctx.fillStyle = '#7a6a4a';
-      ctx.fillRect(px, py + TILE - 4, TILE, 4);
-      ctx.fillStyle = '#9a8a6a';
-      ctx.fillRect(px + 2, py + 2, 4, 4);
-      ctx.fillRect(px + 22, py + 4, 4, 4);
-      ctx.fillRect(px + 14, py + 18, 4, 4);
+      if (!drawAtlasTile('dirt', px, py, '#d6bb8b')) {
+        ctx.fillStyle = '#8a7a5a'; ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = '#7a6a4a'; ctx.fillRect(px, py + TILE - 4, TILE, 4);
+      }
       break;
     case T.FLOOR:
-      ctx.fillStyle = '#5a3a2a';
-      ctx.fillRect(px, py, TILE, TILE);
-      ctx.fillStyle = '#4a2a1a';
-      ctx.fillRect(px, py, TILE, 2);
-      ctx.fillRect(px, py + TILE - 2, TILE, 2);
-      ctx.fillRect(px + TILE/2 - 1, py, 2, TILE);
+      if (!drawAtlasTile('woodFloor', px, py)) {
+        ctx.fillStyle = '#5a3a2a'; ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = '#4a2a1a'; ctx.fillRect(px, py, TILE, 2); ctx.fillRect(px, py + TILE - 2, TILE, 2);
+      }
       break;
     case T.WALL:
-      ctx.fillStyle = '#6a3a2a';
-      ctx.fillRect(px, py, TILE, TILE);
-      ctx.fillStyle = '#5a2a1a';
-      ctx.fillRect(px, py, TILE, 6);
-      ctx.fillStyle = '#8a5a3a';
-      ctx.fillRect(px + 4, py + 4, TILE - 8, 4);
-      // roof
-      ctx.fillStyle = '#a04a2a';
-      ctx.fillRect(px, py - TILE * 0.0, TILE, 4);
+      if (!drawAtlasTile('woodWall', px, py)) {
+        ctx.fillStyle = '#6a3a2a'; ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = '#5a2a1a'; ctx.fillRect(px, py, TILE, 6);
+        ctx.fillStyle = '#8a5a3a'; ctx.fillRect(px + 4, py + 4, TILE - 8, 4);
+      }
       break;
     case T.SHOP_FLOOR:
-      ctx.fillStyle = '#4a3a2a';
-      ctx.fillRect(px, py, TILE, TILE);
-      ctx.fillStyle = '#3a2a1a';
-      ctx.fillRect(px + 2, py + 2, 6, 6);
-      ctx.fillRect(px + 22, py + 22, 6, 6);
+      if (!drawAtlasTile('shopFloor', px, py)) {
+        ctx.fillStyle = '#4a3a2a'; ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = '#3a2a1a'; ctx.fillRect(px + 2, py + 2, 6, 6); ctx.fillRect(px + 22, py + 22, 6, 6);
+      }
       break;
     case T.SHOP_WALL:
-      ctx.fillStyle = '#7a5a3a';
-      ctx.fillRect(px, py, TILE, TILE);
-      ctx.fillStyle = '#5a3a2a';
-      ctx.fillRect(px, py, TILE, 6);
-      ctx.fillStyle = '#9a7a5a';
-      ctx.fillRect(px + 4, py + 8, 4, 12);
-      ctx.fillRect(px + 24, py + 8, 4, 12);
+      if (!drawAtlasTile('shopWall', px, py)) {
+        ctx.fillStyle = '#7a5a3a'; ctx.fillRect(px, py, TILE, TILE);
+        ctx.fillStyle = '#5a3a2a'; ctx.fillRect(px, py, TILE, 6);
+        ctx.fillStyle = '#9a7a5a'; ctx.fillRect(px + 4, py + 8, 4, 12); ctx.fillRect(px + 24, py + 8, 4, 12);
+      }
       break;
     case T.TREE: {
-      // ===== Layer 3 (Collision): TRUNK ONLY =====
-      // Only draw the trunk here. The leaves (canopy) are drawn separately
-      // in Layer 4 (drawCanopyTile) at the tile ABOVE, with overhang downward
-      // so they visually connect with this trunk. This avoids double-rendering
-      // leaves both in Layer 3 (full sprite) and Layer 4 (canopy overlay).
-      ctx.fillStyle = '#3a6a2a';
-      ctx.fillRect(px, py, TILE, TILE);  // grass backdrop
+      // Trunk remains in the collision layer; the leafy crown is rendered in Layer 4.
+      drawAssetTileOrFallback('grass', px, py, '#3a6a2a');
       const treeStrip = getAsset('Elements/Plants/spr_deco_tree_01_strip4.png');
-      if (treeStrip && treeStrip.complete && treeStrip.naturalWidth) {
+      if (treeStrip && treeStrip.naturalWidth) {
         const fw = treeStrip.naturalWidth / 4;
-        const fh = treeStrip.naturalHeight;  // 34
         const fi = Math.floor(performance.now() / 360) % 4;
-        // Crop TRUNK region of sprite: bottom portion (y=20 to y=34, ~14px)
-        // Draw at bottom of trunk tile, scaled to fit
         ctx.drawImage(treeStrip, fi * fw, 20, fw, 14, px + 2, py + 16, TILE - 4, 18);
       } else {
-        // Procedural trunk fallback
-        ctx.fillStyle = '#5a3a1a';
-        ctx.fillRect(px + 13, py + 16, 6, 16);
-        ctx.fillStyle = '#4a2a0a';
-        ctx.fillRect(px + 13, py + 16, 2, 16);
+        ctx.fillStyle = '#5a3a1a'; ctx.fillRect(px + 13, py + 16, 6, 16);
+        ctx.fillStyle = '#4a2a0a'; ctx.fillRect(px + 13, py + 16, 2, 16);
       }
       break;
     }
-    case T.BUSH:
-      ctx.fillStyle = '#3a6a2a';
-      ctx.fillRect(px, py, TILE, TILE);
-      ctx.fillStyle = '#2a5a1a';
-      ctx.fillRect(px + 6, py + 10, 20, 18);
-      ctx.fillStyle = '#3a7a2a';
-      ctx.fillRect(px + 8, py + 12, 6, 6);
-      ctx.fillRect(px + 18, py + 16, 6, 6);
-      // berry
-      ctx.fillStyle = '#e34a3a';
-      ctx.fillRect(px + 14, py + 14, 3, 3);
-      ctx.fillRect(px + 22, py + 20, 3, 3);
+    case T.BUSH: {
+      drawAssetTileOrFallback('grass', px, py, '#3a6a2a');
+      const bush = getAsset('Tileset/spr_tileset_sunnysideworld_forest_32px.png');
+      if (bush && bush.naturalWidth >= 32 && bush.naturalHeight >= 32) {
+        ctx.drawImage(bush, 0, 0, 32, 32, px, py, TILE, TILE);
+      } else if (!drawAtlasTile('bush', px, py)) {
+        ctx.fillStyle = '#2a5a1a'; ctx.fillRect(px + 6, py + 10, 20, 18);
+        ctx.fillStyle = '#3a7a2a'; ctx.fillRect(px + 8, py + 12, 6, 6); ctx.fillRect(px + 18, py + 16, 6, 6);
+      }
       break;
+    }
     case T.FENCE:
-      ctx.fillStyle = '#3a6a2a';
-      ctx.fillRect(px, py, TILE, TILE);
-      ctx.fillStyle = '#8a6a3a';
-      ctx.fillRect(px + 4, py + 6, 4, 22);
-      ctx.fillRect(px + 24, py + 6, 4, 22);
-      ctx.fillRect(px + 2, py + 12, 28, 4);
-      ctx.fillRect(px + 2, py + 22, 28, 4);
+      if (!drawAtlasTile('fence', px, py)) {
+        drawAssetTileOrFallback('grass', px, py, '#3a6a2a');
+        ctx.fillStyle = '#8a6a3a'; ctx.fillRect(px + 4, py + 6, 4, 22); ctx.fillRect(px + 24, py + 6, 4, 22);
+        ctx.fillRect(px + 2, py + 12, 28, 4); ctx.fillRect(px + 2, py + 22, 28, 4);
+      }
+      break;
+    case T.POND_EDGE:
+      if (!drawAtlasTile('sand', px, py)) {
+        ctx.fillStyle = '#d4c08a'; ctx.fillRect(px, py, TILE, TILE);
+      }
       break;
     default:
-      ctx.fillStyle = '#3a6a2a';
-      ctx.fillRect(px, py, TILE, TILE);
+      drawAssetTileOrFallback('grass', px, py, '#3a6a2a');
   }
 }
 
@@ -3505,12 +3521,12 @@ function updateHUD() {
   document.getElementById('hud-gold').textContent = player.gold;
   document.getElementById('hud-day').textContent = day;
   document.getElementById('hud-season').textContent = seasonLabel(season) + ' (' + seasonDay + ')';
-  document.getElementById('hud-season-icon').textContent = seasonIcon(season);
+  document.getElementById('hud-season-icon').src = 'assets/UI/plant.png';
   const h = Math.floor(timeOfDay / 60);
   const m = Math.floor(timeOfDay % 60);
   const timeStr = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
   document.getElementById('hud-time').textContent = timeStr;
-  document.getElementById('hud-time-icon').textContent = (h >= 6 && h < 19) ? '☀️' : '🌙';
+  document.getElementById('hud-time-icon').src = (h >= 6 && h < 19) ? 'assets/UI/stopwatch.png' : 'assets/UI/sandtimer.png';
   // Update zone label in HUD
   const hudZoneEl = document.getElementById('hud-zone');
   if (hudZoneEl) {
