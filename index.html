@@ -559,21 +559,22 @@
   .pause-btn {
     display: block; width: 100%;
     padding: 12px 16px; margin-bottom: 8px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 2px solid rgba(136, 192, 255, 0.3);
+    /* Let nine-slice show through */
+    background-color: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(136, 192, 255, 0.4);
     color: #c8d8ff; border-radius: 10px;
     font-size: 14px; font-weight: 700; cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, transform 0.08s;
+    transition: background-color 0.15s, border-color 0.15s, transform 0.08s;
   }
   .pause-btn:hover {
-    background: rgba(136, 192, 255, 0.15);
-    border-color: rgba(136, 192, 255, 0.6);
+    background-color: rgba(136, 192, 255, 0.2);
+    border-color: rgba(136, 192, 255, 0.7);
     transform: translateY(-1px);
   }
   .pause-btn:active { transform: translateY(0) scale(0.98); }
   .pause-btn.primary {
-    background: linear-gradient(180deg, rgba(136, 192, 255, 0.3), rgba(100, 150, 220, 0.3));
-    border-color: rgba(136, 192, 255, 0.7);
+    background-color: rgba(136, 192, 255, 0.25);
+    border-color: rgba(136, 192, 255, 0.8);
     color: #fff;
   }
   .pause-hint { font-size: 10px; color: #4a5a7a; margin-top: 14px; }
